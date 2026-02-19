@@ -24,6 +24,7 @@ import { IntroOverlay } from './IntroOverlay';
 import { AppShelf3D } from './AppShelf3D';
 import { FuturisticNotepad } from './FuturisticNotepad';
 import { GitArkanoid } from './GitArkanoid';
+import { SupportingView } from './SupportingView';
 import { FriscyMachine } from '../lib/FriscyMachine';
 import { BootState, MachineStats } from '../types/emulator';
 
@@ -82,9 +83,6 @@ const WindowInstance: React.FC<WindowInstanceProps> = ({
 
     return (
       <div className={`${isMinimized ? 'h-auto' : 'h-full'} ${customClass} transition-all duration-300`}>
-import { SupportingView } from './SupportingView';
-import { FriscyMachine } from '../lib/FriscyMachine';
-...
         <WindowFrame
           id={id}
           title={windowTitle}

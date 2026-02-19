@@ -14,16 +14,8 @@ export const SupportingView: React.FC<SupportingViewProps> = ({ activeApp }) => 
     const prevAppRef = useRef<string | null>(activeApp);
     const containerRef = useRef<HTMLDivElement>(null);
 
-    // Handle Copy-Paste Hub activation
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
-                setIsCopyHubActive(true);
-            }
-        };
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, []);
+    // Copy-Paste Hub activation disabled - Ctrl+C must not be hijacked globally
+    // TODO: Re-enable with a non-conflicting trigger (e.g. dedicated button or Ctrl+Shift+V)
 
     const handleMouseLeave = () => {
         if (isCopyHubActive) {
@@ -132,20 +124,20 @@ export const SupportingView: React.FC<SupportingViewProps> = ({ activeApp }) => 
                         background: 'linear-gradient(90deg, #050810 0%, #0a1510 100%)'
                     }}
                 >
-                    {/* Green Wire Mesh Overlay */}
-                    <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] mix-blend-screen" />
+                    {/* Green Wire Mesh Overlay (CSS-only pattern) */}
+                    <div className="absolute inset-0 opacity-10 mix-blend-screen" style={{ backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(0,255,0,0.03) 1px, rgba(0,255,0,0.03) 2px), repeating-linear-gradient(90deg, transparent, transparent 1px, rgba(0,255,0,0.03) 1px, rgba(0,255,0,0.03) 2px)', backgroundSize: '4px 4px' }} />
                     <div className="absolute inset-0 bg-green-500/5 backdrop-blur-[2px]" />
                 </div>
 
                 {/* Right Door */}
-                <div 
+                <div
                     className="flex-1 bg-[#050810] border-l border-green-500/20 relative overflow-hidden transition-transform duration-500 ease-in-out"
-                    style={{ 
+                    style={{
                         transform: isTransitioning ? 'translateX(0)' : 'translateX(100%)',
                         background: 'linear-gradient(-90deg, #050810 0%, #0a1510 100%)'
                     }}
                 >
-                    <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] mix-blend-screen" />
+                    <div className="absolute inset-0 opacity-10 mix-blend-screen" style={{ backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(0,255,0,0.03) 1px, rgba(0,255,0,0.03) 2px), repeating-linear-gradient(90deg, transparent, transparent 1px, rgba(0,255,0,0.03) 1px, rgba(0,255,0,0.03) 2px)', backgroundSize: '4px 4px' }} />
                     <div className="absolute inset-0 bg-green-500/5 backdrop-blur-[2px]" />
                 </div>
             </div>

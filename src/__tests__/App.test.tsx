@@ -50,6 +50,15 @@ vi.mock('../lib/FriscyMachine', () => {
 describe('App', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Mock ResizeObserver
+    vi.stubGlobal('ResizeObserver', class ResizeObserver {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    });
+    // Mock requestAnimationFrame/cancelAnimationFrame
+    vi.stubGlobal('requestAnimationFrame', vi.fn());
+    vi.stubGlobal('cancelAnimationFrame', vi.fn());
     // Mock fetch for shared rootfs
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
         ok: true,
@@ -76,9 +85,9 @@ describe('App', () => {
         expect(screen.getAllByText('Claude Code').length).toBeGreaterThan(0);
     }, { timeout: 5000 });
 
-    // Expecting multiple matches (frame title and footer button)
+    // Window titles: Claude Code, System Config, App Hub
     expect(screen.getAllByText('Claude Code').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Alpine Linux').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Gemini Agent').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('System Config').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('App Hub').length).toBeGreaterThan(0);
   });
 });

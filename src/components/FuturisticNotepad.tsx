@@ -29,8 +29,10 @@ export const FuturisticNotepad: React.FC = () => {
         localStorage.setItem('friscy-neural-log', note);
     }, [note]);
 
+    const [gitMessage, setGitMessage] = useState<string | null>(null);
     const handleGitCommit = () => {
-        alert('Git integration pending: Workspace not yet connected to a remote workstream.');
+        setGitMessage('Git integration pending: Workspace not yet connected to a remote workstream.');
+        setTimeout(() => setGitMessage(null), 3000);
     };
 
     return (
@@ -77,6 +79,11 @@ export const FuturisticNotepad: React.FC = () => {
                 </div>
 
                 <div className="absolute bottom-0 right-0 left-0 h-[1px] bg-gradient-to-r from-transparent via-friscy-blue/30 to-transparent animate-pulse" />
+                {gitMessage && (
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-4 py-2 bg-black/90 border border-friscy-blue/30 rounded text-[9px] text-friscy-blue font-bold uppercase tracking-widest whitespace-nowrap z-50 animate-in fade-in slide-in-from-bottom-2">
+                        {gitMessage}
+                    </div>
+                )}
             </div>
 
             <div className="flex-1 flex overflow-hidden">

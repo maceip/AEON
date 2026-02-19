@@ -12,7 +12,7 @@ describe('ProgressOverlay', () => {
 
   it('renders when active', () => {
     render(<ProgressOverlay progress={50} stage="Loading" active={true} />);
-    expect(screen.getByText('friscy')).toBeTruthy();
+    expect(screen.getByText('fRISCy')).toBeTruthy();
     expect(screen.getByText('Loading')).toBeTruthy();
   });
 

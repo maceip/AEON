@@ -13,6 +13,7 @@ export default defineConfig({
       manifest: false, // We point to it in index.html as .well-known/manifest.json
       workbox: {
         globPatterns: ['**/*.{js,css,html,wasm,svg,jpg,png}'],
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB - needed for bundled Three.js + onnxruntime
         cleanupOutdatedCaches: true, // Force cleanup of old versions
         clientsClaim: true,
         skipWaiting: true,
