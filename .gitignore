@@ -1,0 +1,57 @@
+# Build directories
+dist/
+friscy-bundle/dist/
+build/
+build-native/
+build-wasm/
+runtime/build/
+runtime/build-native/
+runtime/build-tailcall/
+node_modules/
+target/
+
+# Emscripten SDK (if installed locally)
+tools/emsdk/
+runtime/emsdk/
+
+# Local package installs / generated benchmark artifacts
+node_modules/
+tests/perf/
+tmp/
+
+# Go artifacts
+proxy/go.sum
+proxy/proxy
+proxy/friscy-proxy
+
+# Go toolchain (256MB, install separately)
+tools/go-patched/
+
+# Secrets
+proxy/cert.pem
+proxy/key.pem
+
+# Rust artifacts
+aot/target/
+target/
+aot/Cargo.lock
+
+# Test binaries and tarballs (built locally)
+tests/test_http
+tests/test_http_minimal
+tests/*.tar
+tests/echo_server/echo_server
+
+# Editor/IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Large rootfs tarballs (built locally via Docker)
+friscy-bundle/*.tar
+
+# OS
+.DS_Store
+Thumbs.db
+public/friscy-bundle/*.tar
