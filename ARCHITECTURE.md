@@ -32,8 +32,14 @@ functions; direct links would go stale.
 ### `runtime/main.cpp`
 
 Entry point for both native and Emscripten builds. Contains the simulate loop,
-CLI flag parsing, and Emscripten-exported C functions (`friscy_resume`,
-`friscy_stopped`, `friscy_write_stdin`, `friscy_get_pc`, `friscy_set_pc`).
+CLI flag parsing, checkpoint load/export, and Emscripten-exported C functions
+(`friscy_resume`, `friscy_stopped`, `friscy_write_stdin`, `friscy_get_pc`,
+`friscy_set_pc`).
+
+CLI flags include `--load-checkpoint <path>` and `--export-checkpoint <path>`.
+When loading a checkpoint, the entire boot sequence (ELF load, dynamic linker,
+initial execution) is skipped — machine state is restored from the binary blob
+and execution resumes from the saved PC.
 
 In Emscripten builds, `main()` runs the machine until it blocks on stdin, then
 returns control to JavaScript. The Worker calls `friscy_resume()` repeatedly to
@@ -43,12 +49,30 @@ continue execution in chunks, checking for JIT'd code at each re-entry.
 goes through syscall handlers or Emscripten's `EM_ASM` bridges. This keeps the
 core loop portable between native and Wasm builds.
 
+### `runtime/checkpoint.hpp`
+
+Binary checkpoint format for full machine state serialization. Captures CPU
+registers, memory management state, execution context, scheduler state, and
+sparse arena memory chunks. The format is:
+
+1. Header (magic, version, machine hash)
+2. CPU state (all 32 integer + 32 FP registers, PC, CSRs)
+3. Memory management (heap pointer, mmap regions, page table metadata)
+4. Execution context (current instruction, execute segment cache)
+5. Scheduler state (thread list, current thread, futex waiters)
+6. Arena data (sparse chunks — only non-zero 4KB pages are saved)
+
+A checkpoint of a booted Claude REPL environment is ~81MB (mostly arena data).
+Loading a checkpoint skips the entire boot sequence (~3.4 billion instructions).
+
 ### `runtime/syscalls.hpp`
 
 All ~80 Linux syscall handlers, registered via `machine.on_syscall(nr, handler)`.
 Covers file I/O, memory management (mmap, mprotect, brk), process lifecycle
-(clone, execve, fork, exit, wait4), signals, futex, epoll, pipe, eventfd, and
-misc (uname, prctl, getrandom, ioctl).
+(clone, clone3, execve, fork, exit, wait4), signals, futex, epoll, pipe, eventfd,
+and misc (uname, prctl, getrandom, ioctl). Includes checkpoint trigger flags
+(`g_checkpoint_on_stdin`, `g_idle_epoll_count`) for automatic checkpoint export
+when the guest reaches an idle state.
 
 The `execve` implementation is notable: it calls `m.stop()` to safely break out
 of the dispatch loop, then the outer simulate loop in `main.cpp` detects the
@@ -81,9 +105,15 @@ memory, providing read-write access with proper directory entries, symlink
 resolution, and special file emulation (`/proc/self/exe`, `/dev/null`,
 `/dev/urandom`, `/dev/tty`).
 
-**Architecture Invariant:** the VFS is entirely in-memory. There is no
-persistent storage across page loads (a known limitation). All mutations happen
-on the in-memory copy of the tar contents.
+The VFS is entirely in-memory during execution. Persistence across page loads is
+handled by the overlay system in `friscy-bundle/overlay.js`, which computes
+deltas between the base rootfs and the current VFS state, storing only the
+changed files as JSON in OPFS (via Storage Buckets when available).
+
+**Architecture Invariant:** the Worker never writes directly to OPFS. All
+persistence flows through the main thread: Worker exports a tar via
+`postMessage`, the main thread computes a delta against the base tar, and saves
+the delta to OPFS. This is the single write path.
 
 ### `runtime/elf_loader.hpp`
 
@@ -150,10 +180,10 @@ a single function `compile_region(code_ptr, code_len, base_addr)` that takes raw
 RISC-V machine code bytes and returns Wasm module bytes. Used by `jit_manager.js`
 in the browser.
 
-### `friscy-bundle/worker.js`
+### `src/workers/emulator.worker.ts`
 
-The Web Worker entry point. Loads the Emscripten module and the JIT compiler,
-then runs the emulator in a loop:
+The Web Worker entry point (Vite mode). Loads the Emscripten module and the JIT
+compiler, then runs the emulator in a loop:
 
 1. Call `friscy_resume()` — interpreter runs until it blocks on stdin or exits.
 2. On stdin block: write a request to the control SharedArrayBuffer, then
@@ -162,10 +192,50 @@ then runs the emulator in a loop:
 4. Before each `friscy_resume()`, check if the current PC has a JIT'd
    compilation. If so, call the compiled Wasm function directly.
 
+On the `run` message, the worker accepts optional `checkpointData`. If present,
+it writes the checkpoint to the guest filesystem and prepends
+`--load-checkpoint /checkpoint.ckpt` to the emulator args, skipping the full
+boot sequence.
+
+The worker also handles `throttle` messages from the Compute Pressure API and
+`fs_changed` notifications from the FileSystemObserver.
+
 **Architecture Invariant:** the Worker thread never touches the DOM. All terminal
 output goes through the stdout ring buffer in SharedArrayBuffer. All network I/O
-goes through the network RPC buffer. The main thread polls these at ~4ms
-intervals.
+goes through the network RPC buffer. The main thread polls these via
+`requestAnimationFrame` + `scheduler.yield()` (with `setInterval(4ms)` fallback).
+
+### `src/lib/FriscyMachine.ts`
+
+Machine lifecycle orchestrator. Manages boot, polling, persistence, and cleanup.
+
+- **Boot**: acquires a Web Lock (`navigator.locks.request`) to ensure single-tab
+  ownership, fetches rootfs and checkpoint in parallel, applies package layers
+  via `PackageManager`, restores overlay delta, transfers everything to the Worker.
+- **Polling**: drains stdout ring buffer, services stdin requests, checks exit.
+  Uses `rAF + scheduler.yield()` when available, `setInterval(4ms)` fallback.
+- **Persistence**: on `vfs_export` from worker, computes delta via
+  `computeDelta(baseTar, currentTar)`, JSON-encodes, saves to OPFS.
+- **Compute Pressure**: `PressureObserver` on CPU, forwards throttle level to
+  worker at 1s intervals.
+- **FileSystemObserver**: watches mounted local folders for external changes.
+
+### `src/lib/PackageManager.ts`
+
+OPFS-based package layer management. Packages are tar archives stored in OPFS
+under `aeon-packages/`. On boot, installed package layers are merged on top of
+the base rootfs via `mergeTars()` before the session delta is applied.
+
+### `friscy-bundle/overlay.js`
+
+Overlay persistence layer. Key exports:
+
+- `computeDelta(baseTar, currentTar)` — produces `{added, modified, deleted}`
+- `applyDelta(baseTar, delta)` — reconstructs full tar from base + delta
+- `mergeTars(baseTar, overlayTar)` — tar union for package layers
+- `createSession(machineId, name)` — session management in OPFS
+- `saveOverlay(id, data)` / `loadOverlay(id)` — OPFS read/write
+- `getSessionsRoot()` — uses Storage Buckets with OPFS fallback
 
 ### `friscy-bundle/index.html`
 
@@ -214,12 +284,14 @@ modifications:
 
 ## System Boundaries
 
-### Worker ↔ Main Thread (SharedArrayBuffer)
+### Worker ↔ Main Thread (SharedArrayBuffer + postMessage)
 
 Three shared buffers with atomic coordination. The Worker blocks freely on
-`Atomics.wait()`; the main thread never blocks (it polls at 4ms). This boundary
-is the only communication channel — no `postMessage` is used during execution
-(only for initial setup).
+`Atomics.wait()`; the main thread never blocks (it polls via rAF +
+`scheduler.yield()`). SharedArrayBuffer is the primary communication channel for
+real-time data (stdin/stdout/network). `postMessage` is used for setup, VFS
+export (tar transfer), checkpoint data, throttle notifications, and FS change
+events.
 
 ### Syscall Layer ↔ libriscv
 

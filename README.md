@@ -3,37 +3,39 @@
   <tr>
     <td align="left" valign="bottom" style="border: none; padding-right: 30px;">
 <pre>
-▐▀▀▀▀▀▀▀▌
-▐ fRISCy ⸎&nbsp;&nbsp; <strong>fast risc-v runtime for the browser</strong>
-▐▄▄▄▄▄▄▄▌
+ ▄▀▄ ▄▀▀ ▄▀▄ ▄▀▄
+ █▀█ █▀▀ █ █ █ █
+ ▀ ▀ ▀▀▀ ▀▀▀ ▀ ▀
 </pre>
       <br>
-      <strong>        friscy runs docker containers in WebAssembly</strong>
+      <strong>AEON — Linux in the browser, no servers required</strong>
       <br><br>
       <ul align="left" style="margin-top: 0;">
-        <li>Cross-compile containers to RISC-V 64-bit</li>
-        <li>Run them in a userland RISC-V emulator (libriscv)</li>
+        <li>Run Docker containers in a RISC-V emulator compiled to WebAssembly</li>
         <li>JIT-compile hot code regions to native Wasm at runtime</li>
-        <li>Interactive web shell with xterm.js + networking</li>
+        <li>Native checkpoint/restore for instant resume (skips boot)</li>
+        <li>OPFS overlay persistence with delta compression</li>
+        <li>Interactive terminal with xterm.js + TCP networking</li>
       </ul>
     </td>
     <td valign="bottom" style="border: none;">
-      <img width="238" height="313" alt="fh" src="https://github.com/user-attachments/assets/aa87c5bc-18ec-470e-8ee8-8a013609bb18" />
+      <img width="238" height="313" alt="aeon" src="docs/assets/aeon.jpg" />
     </td>
   </tr>
 </table>
 </div>
 
 <p align="center">
-  <a href="https://maceip.github.io/friscy/"><strong>Live Demo</strong></a>
+  <a href="https://maceip.github.io/AEON/"><strong>Live Demo</strong></a>
 </p>
 <br>
 
 ## Milestone: Claude Code in the Browser
 
-friscy can boot Claude Code (`@anthropic-ai/claude-code` 2.1.39) inside a RISC-V
+AEON boots Claude Code (`@anthropic-ai/claude-code` 2.1.39) inside a RISC-V
 emulator running in WebAssembly. The guest environment is Alpine Linux (edge, riscv64)
-with Node.js 24 running in `--jitless` mode.
+with Node.js 24 running in `--jitless` mode. With checkpoint restore, the full
+environment resumes instantly from a pre-built snapshot.
 
 ```
 claude --version  →  2.1.39 (Claude Code)    # 3.4 billion RISC-V instructions
@@ -48,11 +50,13 @@ claude --version  →  2.1.39 (Claude Code)    # 3.4 billion RISC-V instructions
 | Virtual Filesystem | Complete | Tar-backed, read-write, symlinks, /proc, /dev emulation |
 | Dynamic Linker | Complete | ld-musl, aux vector, execve with interpreter reload |
 | Networking | Complete | TCP via WebTransport proxy, epoll, accept4 |
-| AOT Compiler (rv2wasm) | Complete | RISC-V → Wasm, FP, br_table dispatch, friscy-pack |
+| AOT Compiler (rv2wasm) | Complete | RISC-V → Wasm, FP, br_table dispatch |
 | JIT Tier | Complete | rv2wasm compiled to wasm32, runtime hot-region compilation |
 | Worker + SAB | Complete | Emulator in Web Worker, Atomics.wait/notify I/O |
-| Wizer Snapshots | Complete | VFS tar export, pre-initialization |
-| Web Shell | Complete | xterm.js, clipboard, terminal resize, progress UI |
+| Checkpoint/Restore | Complete | Binary machine state serialization, instant resume |
+| Overlay Persistence | Complete | OPFS delta compression, package layers, Storage Buckets |
+| Browser API Integration | Complete | Web Locks, Compression Streams, Compute Pressure, PiP, Keyboard Lock |
+| Web Shell | Complete | xterm.js, clipboard, terminal resize, voice input, progress UI |
 
 ## Architecture
 
@@ -100,59 +104,59 @@ claude --version  →  2.1.39 (Claude Code)    # 3.4 billion RISC-V instructions
 ## Directory Structure
 
 ```
-friscy-standalone/
+AEON/
 ├── runtime/              # C++ emulator (libriscv + syscalls)
 │   ├── CMakeLists.txt    # Emscripten + native build config
-│   ├── main.cpp          # Entry point, simulate loop, exports
-│   ├── syscalls.hpp      # ~80 Linux syscall handlers
+│   ├── main.cpp          # Entry point, simulate loop, checkpoint CLI
+│   ├── syscalls.hpp      # ~80 Linux syscall handlers + clone3
+│   ├── checkpoint.hpp    # Binary machine state serialization
 │   ├── network.hpp       # Socket, epoll, accept4 handlers
 │   ├── vfs.hpp           # Virtual filesystem (tar-backed)
 │   └── elf_loader.hpp    # ELF loading, dynamic linker, execve
 │
-├── aot/                  # rv2wasm AOT compiler (Rust)
-│   ├── Cargo.toml
-│   └── src/
-│       ├── main.rs       # CLI: rv2wasm input.elf -o output.wasm
-│       ├── elf.rs        # ELF parser (goblin)
-│       ├── disasm.rs     # RV64GC decoder (~240 opcodes)
-│       ├── cfg.rs        # Control flow graph builder
-│       ├── translate.rs  # RISC-V → WasmInst IR translation
-│       └── wasm_builder.rs # WasmInst → wasm-encoder bytecode
+├── src/                  # React frontend (TypeScript + Vite)
+│   ├── App.tsx           # Main app, presets, boot orchestration
+│   ├── lib/
+│   │   ├── FriscyMachine.ts   # Machine lifecycle, Web Locks, persistence
+│   │   └── PackageManager.ts  # OPFS package layer management
+│   ├── workers/
+│   │   └── emulator.worker.ts # Web Worker (emulator loop, checkpoint)
+│   ├── components/       # UI: terminal, window frame, overlays
+│   ├── contexts/         # Theme context
+│   ├── hooks/            # ASR hook
+│   └── types/            # TypeScript types (emulator, worker messages)
 │
+├── aot/                  # rv2wasm AOT compiler (Rust)
 ├── aot-jit/              # JIT tier (rv2wasm → wasm32 via wasm-bindgen)
-│   ├── Cargo.toml
-│   └── src/lib.rs        # compile_region() export
 │
 ├── friscy-bundle/        # Browser deployment bundle
-│   ├── index.html        # Web shell (xterm.js, Worker spawn, SAB I/O)
-│   ├── worker.js         # Web Worker entry (loads Emscripten, resume loop)
+│   ├── worker.js         # Standalone Web Worker (non-Vite mode)
+│   ├── overlay.js        # OPFS overlay: delta, sessions, tar utils
 │   ├── jit_manager.js    # Hot-region detection, compile, dispatch
-│   ├── network_bridge.js # WebTransport TCP bridge
-│   ├── network_rpc_host.js # Main-thread network RPC handler
-│   ├── serve.js          # Dev server with COOP/COEP headers
-│   ├── service-worker.js # Offline caching
-│   ├── manifest.json     # Image config (entrypoint, env, AOT list)
-│   ├── friscy.js         # Emscripten JS glue
-│   ├── friscy.wasm       # Emscripten Wasm module (507KB)
-│   ├── rv2wasm_jit.js    # JIT compiler JS glue
-│   ├── rv2wasm_jit_bg.wasm # JIT compiler Wasm (214KB)
-│   └── rootfs.tar        # Container rootfs (179MB for Claude image)
+│   ├── friscy.js/wasm    # Emscripten module
+│   ├── rv2wasm_jit*.wasm # JIT compiler
+│   ├── rootfs.tar        # Container rootfs
+│   └── claude-repl.ckpt  # Pre-built checkpoint for instant resume
 │
-├── tools/                # Build tools
-│   └── Dockerfile.claude # Alpine edge + Node.js + Claude Code
+├── scripts/              # Build & utility scripts
+│   ├── claude-cli.js     # Claude Code CLI bundle
+│   ├── serve-dist.js     # Production server with COOP/COEP
+│   └── sign-bundle.js    # Bundle signing
 │
-├── proxy/                # WebTransport network proxy
-│   ├── cert.pem / key.pem
-│   └── (Go proxy server)
+├── docs/                 # Documentation, plans, research
+│   ├── assets/           # Images (aeon.jpg, aeon_stego.png)
+│   ├── exec-plans/       # Execution plans
+│   ├── TODAY.md           # Daily implementation plan
+│   └── *.md              # Research, demos, performance plans
 │
-├── tests/                # Test files
-│   ├── test_phase1_*.js  # Worker+SAB integration tests
-│   ├── test_echo_server* # Go echo server tests
-│   └── echo_server/      # Go test server source
-│
+├── tools/                # Docker build tools
+├── proxy/                # WebTransport network proxy (Go)
+├── sync-server/          # WebSocket state sync server
+├── tests/                # Integration tests
 ├── vendor/libriscv/      # libriscv emulator library
-├── docs/                 # Documentation
-└── AGENTS.md             # Knowledge base index
+├── AGENTS.md             # Agent instructions & invariants
+├── ARCHITECTURE.md       # System design (matklad style)
+└── README.md             # This file
 ```
 
 ## Quick Start
@@ -243,10 +247,12 @@ cd aot && cargo build --release
 
 ## Documentation
 
-- [Architecture](docs/ARCHITECTURE.md) - System design and data flow
-- [Workstreams](docs/WORKSTREAMS.md) - A-G workstream organization
-- [Roadmap](docs/ROADMAP.md) - Implementation status and TODOs
-- [Endziel](docs/ENDZIEL.md) - Performance tier targets
+- [Architecture](ARCHITECTURE.md) — System design, invariants, code map (matklad style)
+- [Agent Instructions](AGENTS.md) — For AI agents working on the codebase
+- [Demo](docs/DEMO.md) — Running the demo
+- [Syscall TODO](docs/SYSCALL_TODO.md) — Remaining syscalls to implement
+- [Performance Plan](docs/PERFORMANCE-ACCELERATION-PLAN.md) — Acceleration research
+- [Research](docs/RESEARCH-emulation-acceleration.md) — Emulation research notes
 
 ## License
 
