@@ -215,6 +215,13 @@ export class FriscyMachine {
     this.startPolling();
     this.startAutoSave();
     this.startPressureObserver();
+
+    // Phase 4B: Log JSPI growable stacks availability (Chrome 137+ auto-enables)
+    try {
+      if (typeof WebAssembly !== 'undefined' && (WebAssembly as any).Suspending) {
+        console.log('[machine] JSPI with growable stacks available');
+      }
+    } catch { /* not available */ }
   }
 
   private pressureObserver: any = null;

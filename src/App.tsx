@@ -191,8 +191,18 @@ const AppContent: React.FC = () => {
       );
   }
 
+  // Window Controls Overlay status (Phase 4C)
+  const hasWCO = typeof navigator !== 'undefined' && 'windowControlsOverlay' in navigator;
+
   return (
     <div className={`flex flex-col h-screen overflow-hidden font-mono selection:bg-[#59c2ff]/30 transition-colors duration-500 ${theme === 'light' ? 'light' : ''}`}>
+      {hasWCO && (
+        <div className="wco-titlebar">
+          <span className="font-black italic tracking-tighter text-[var(--color-friscy-blue)]">AEON</span>
+          <span>{stats.instructions} instr | {stats.ram}</span>
+          <span>{stats.localDisk ? 'FS mounted' : ''} {stats.containerSync ? '| syncing' : ''}</span>
+        </div>
+      )}
       <div className={`steam-container transition-opacity duration-1000 ${steamVisible ? 'opacity-100' : 'opacity-0'}`}>
         <div className="steam-wisp" style={{ left: '15%', animationDelay: '0s' }} />
         <div className="steam-wisp" style={{ left: '45%', animationDelay: '3s' }} />

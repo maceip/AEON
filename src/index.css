@@ -39,6 +39,26 @@
   }
 }
 
+/* Window Controls Overlay: use reclaimed title bar area (Phase 4C) */
+@supports (env(titlebar-area-x)) {
+  .wco-titlebar {
+    position: fixed;
+    top: env(titlebar-area-y, 0);
+    left: env(titlebar-area-x, 0);
+    width: env(titlebar-area-width, 100%);
+    height: env(titlebar-area-height, 0);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 8px;
+    -webkit-app-region: no-drag;
+    z-index: 1000;
+    font-size: 10px;
+    color: var(--text-muted);
+    pointer-events: auto;
+  }
+}
+
 /* Buffed Material / Metallic - Ultra subtle */
 .buffed-material {
     background: linear-gradient(180deg, var(--bg-frame) 0%, var(--bg-panel) 100%);

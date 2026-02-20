@@ -256,6 +256,40 @@ export const TerminalView: React.FC<TerminalViewProps> = ({ machine, active, voi
     };
   }, [machine, theme]);
 
+  // Local Font Access: let users pick any installed monospace font (Phase 4F)
+  const pickFont = useCallback(async () => {
+    if (!('queryLocalFonts' in window) || !xtermRef.current) return;
+    try {
+      const fonts = await (window as any).queryLocalFonts();
+      const monoFamilies = [...new Set(fonts.map((f: any) => f.family))].filter((f: any) =>
+        f.toLowerCase().includes('mono') || f.toLowerCase().includes('code') || f.toLowerCase().includes('consol')
+      );
+      if (monoFamilies.length > 0) {
+        // Use first monospace font found — in a real UI this would be a dropdown
+        const chosen = monoFamilies[0] as string;
+        xtermRef.current.options.fontFamily = `"${chosen}", monospace`;
+        console.log(`[terminal] Font set to: ${chosen}`);
+      }
+    } catch (e) {
+      console.warn('[terminal] Local Font Access denied:', e);
+    }
+  }, []);
+
+  // EyeDropper: quick color picker for terminal theming (Phase 4G)
+  const pickColor = useCallback(async (target: 'foreground' | 'background' | 'cursor') => {
+    if (!('EyeDropper' in window) || !xtermRef.current) return;
+    try {
+      const dropper = new (window as any).EyeDropper();
+      const result = await dropper.open();
+      const color = result.sRGBHex;
+      const currentTheme = { ...xtermRef.current.options.theme };
+      if (target === 'foreground') currentTheme.foreground = color;
+      else if (target === 'background') currentTheme.background = color;
+      else if (target === 'cursor') currentTheme.cursor = color;
+      xtermRef.current.options.theme = currentTheme;
+    } catch { /* user cancelled */ }
+  }, []);
+
   const popOutTerminal = useCallback(async () => {
     if (!xtermRef.current) return;
     const hasPiP = 'documentPictureInPicture' in window;
