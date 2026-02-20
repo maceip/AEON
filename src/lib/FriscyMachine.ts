@@ -23,6 +23,7 @@ export interface MachineConfig {
   entrypoint: string | string[];
   env?: string[];
   icon?: string;
+  checkpoint?: string;
 }
 
 export interface JitStats {
@@ -137,24 +138,40 @@ export class FriscyMachine {
 
     await readyPromise;
 
-    // Fetch or use provided rootfs
+    // Fetch rootfs (and optionally checkpoint) in parallel
     let rootfsData: ArrayBuffer;
+    let checkpointData: ArrayBuffer | undefined;
     if (existingRootfs) {
         rootfsData = existingRootfs;
         this.setProgress(100, 'Using shared rootfs', 'Ready to boot');
     } else {
         this.setProgress(0, 'Downloading rootfs...', 'Starting download...');
         try {
-            const response = await fetch(this.config.rootfs);
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            // Serve rootfs as .tar.gz for ~60% smaller downloads
-            if (this.config.rootfs.endsWith('.gz') && typeof DecompressionStream !== 'undefined') {
-                rootfsData = await new Response(
-                    response.body!.pipeThrough(new DecompressionStream('gzip'))
-                ).arrayBuffer();
-            } else {
-                rootfsData = await response.arrayBuffer();
+            const fetches: Promise<any>[] = [];
+            // Rootfs fetch
+            fetches.push((async () => {
+                const response = await fetch(this.config.rootfs);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                if (this.config.rootfs.endsWith('.gz') && typeof DecompressionStream !== 'undefined') {
+                    return new Response(
+                        response.body!.pipeThrough(new DecompressionStream('gzip'))
+                    ).arrayBuffer();
+                }
+                return response.arrayBuffer();
+            })());
+            // Checkpoint fetch (parallel)
+            if (this.config.checkpoint) {
+                fetches.push((async () => {
+                    try {
+                        const resp = await fetch(this.config.checkpoint!);
+                        if (!resp.ok) return undefined;
+                        return resp.arrayBuffer();
+                    } catch { return undefined; }
+                })());
             }
+            const results = await Promise.all(fetches);
+            rootfsData = results[0];
+            if (results.length > 1) checkpointData = results[1];
         } catch (e: any) {
             this.setStatus('error');
             this.setProgress(0, 'Boot failed', e.message);
@@ -203,12 +220,15 @@ export class FriscyMachine {
     const envArgs = (this.config.env || []).flatMap(e => ['--env', e]);
     const args = [...envArgs, '--rootfs', '/rootfs.tar', ...entrypoint];
 
-    // Transfer rootfsData to worker (we have baseTar as our copy)
-    this.worker.postMessage({
-        type: 'run',
-        args,
-        rootfsData: rootfsData,
-    }, [rootfsData]);
+    // Transfer rootfsData (and checkpoint if available) to worker
+    const runMsg: any = { type: 'run', args, rootfsData };
+    const transfers: ArrayBuffer[] = [rootfsData];
+    if (checkpointData) {
+        runMsg.checkpointData = checkpointData;
+        transfers.push(checkpointData);
+        console.log(`[machine] Checkpoint: ${(checkpointData.byteLength / (1024*1024)).toFixed(1)}MB`);
+    }
+    this.worker.postMessage(runMsg, transfers);
 
     this.setStatus('running');
     this.setProgress(100, 'Boot complete', 'Enjoy your session');

@@ -13,13 +13,14 @@ const PRESETS: MachineConfig[] = [
     name: 'Claude Code',
     image: 'claude-code:latest',
     rootfs: '/friscy-bundle/rootfs.tar',
+    checkpoint: '/friscy-bundle/claude-repl.ckpt',
     entrypoint: ['/usr/bin/node', '--jitless', '--max-old-space-size=256', '/usr/local/bin/claude-repl.js'],
     env: [
         'LD_PRELOAD=/usr/lib/vh_preload.so',
         'NODE_OPTIONS=--jitless --max-old-space-size=256 -r /etc/dns-preload.js',
         'ANTHROPIC_API_KEY=PLACEHOLDER'
     ],
-    icon: '/friscy-bundle/claude-splat.svg' 
+    icon: '/friscy-bundle/claude-splat.svg'
   },
   {
     id: 'alpine',

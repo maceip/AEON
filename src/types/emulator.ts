@@ -120,7 +120,7 @@ export interface EmscriptenModule {
 
 export type WorkerMessage =
     | { type: 'init'; controlSab: SharedArrayBuffer; stdoutSab: SharedArrayBuffer; netSab?: SharedArrayBuffer; enableJit: boolean; [key: string]: any }
-    | { type: 'run'; args: string[]; rootfsData: ArrayBuffer }
+    | { type: 'run'; args: string[]; rootfsData: ArrayBuffer; checkpointData?: ArrayBuffer }
     | { type: 'resize'; rows: number; cols: number }
     | { type: 'write_file'; path: string; data: ArrayBuffer }
     | { type: 'load_overlay'; data: ArrayBuffer }

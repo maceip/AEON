@@ -357,7 +357,16 @@ ctx.onmessage = async (e: MessageEvent<WorkerMessage>) => {
             // Main thread handles overlay merge — rootfs arrives ready to use
             const rootfs = msg.rootfsData ? new Uint8Array(msg.rootfsData) : null;
             if (rootfs) emModule.FS.writeFile('/rootfs.tar', rootfs);
-            await emModule.callMain(msg.args || []);
+
+            // Native checkpoint: write to guest FS and prepend --load-checkpoint arg
+            const args = msg.args || [];
+            if (msg.checkpointData) {
+                emModule.FS.writeFile('/checkpoint.ckpt', new Uint8Array(msg.checkpointData));
+                args.unshift('--load-checkpoint', '/checkpoint.ckpt');
+                console.log(`[worker] Checkpoint loaded (${msg.checkpointData.byteLength} bytes)`);
+            }
+
+            await emModule.callMain(args);
             if (emModule._friscy_stopped && emModule._friscy_stopped()) await runResumeLoop();
             maybePostJitStats(true);
             signalExit(0);
