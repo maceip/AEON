@@ -1,6 +1,7 @@
 // src/lib/FriscyMachine.ts
 // @ts-ignore
 import { saveOverlay, loadOverlay, computeDelta, applyDelta, createSession } from '../../friscy-bundle/overlay.js';
+import { PackageManager } from './PackageManager';
 
 export enum SabOffset {
     COMMAND = 0,
@@ -32,7 +33,7 @@ export interface JitStats {
   [key: string]: any;
 }
 
-export type MachineStatus = 'idle' | 'loading' | 'booting' | 'running' | 'paused' | 'exited' | 'error';
+export type MachineStatus = 'idle' | 'loading' | 'booting' | 'running' | 'paused' | 'exited' | 'error' | 'locked';
 
 export class FriscyMachine {
   private worker: Worker | null = null;
@@ -55,6 +56,9 @@ export class FriscyMachine {
   private stdinQueue: number[] = [];
   private baseTar: ArrayBuffer | null = null;
   private sessionId: string | null = null;
+  public packages: PackageManager = new PackageManager();
+  private lockHeld: boolean = false;
+  public onLockConflict: () => void = () => {};
   
   // Stats to track
   public instructionCount: number = 0;
@@ -77,10 +81,33 @@ export class FriscyMachine {
     this.onProgress(pct, stage, detail);
   }
 
-  public async boot(existingRootfs?: ArrayBuffer) {
+  public async boot(existingRootfs?: ArrayBuffer, steal = false) {
+    // Web Locks: ensure only one tab runs this machine
+    if ('locks' in navigator) {
+      const lockName = `aeon-machine-${this.config.id}`;
+      const lockOptions: LockOptions = steal ? { steal: true } : { ifAvailable: true };
+      const lock = await navigator.locks.request(lockName, lockOptions, async (lock) => {
+        if (!lock) {
+          this.setStatus('locked');
+          this.setProgress(0, 'Machine running in another tab');
+          this.onLockConflict();
+          return false;
+        }
+        this.lockHeld = true;
+        await this._boot(existingRootfs);
+        // Hold lock until tab closes — return a never-resolving promise
+        return new Promise<boolean>(() => {});
+      });
+      if (lock === false) return;
+    } else {
+      await this._boot(existingRootfs);
+    }
+  }
+
+  private async _boot(existingRootfs?: ArrayBuffer) {
     this.setStatus('loading');
     this.setProgress(-1, 'Initializing worker...');
-    
+
     this.worker = new Worker(new URL('../workers/emulator.worker.ts', import.meta.url), { type: 'module' });
     
     this.worker.onmessage = (e) => this.handleWorkerMessage(e);
@@ -128,7 +155,18 @@ export class FriscyMachine {
         }
     }
 
-    // Keep a copy of the base rootfs for delta computation (Phase 1B/1C)
+    // Apply installed package layers on top of base rootfs
+    try {
+        await this.packages.loadManifest();
+        if (this.packages.getInstalledIds().length > 0) {
+            rootfsData = await this.packages.applyLayers(rootfsData);
+            console.log(`[machine] Applied package layers: ${this.packages.getInstalledIds().join(', ')}`);
+        }
+    } catch (e) {
+        console.warn('[machine] Failed to apply package layers:', e);
+    }
+
+    // Keep a copy of base+packages rootfs for delta computation
     this.baseTar = rootfsData.slice(0);
 
     // Create or open session, then try to restore overlay delta

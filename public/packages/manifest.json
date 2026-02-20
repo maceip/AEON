@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "packages": [
+    {
+      "id": "hello",
+      "name": "Hello World",
+      "description": "Test package — adds /usr/local/bin/hello",
+      "size": "1KB",
+      "url": "/packages/hello.tar.gz"
+    }
+  ]
+}
