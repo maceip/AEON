@@ -52,6 +52,7 @@ export default defineConfig({
   },
   optimizeDeps: {
     exclude: ['@xterm/xterm'],
+    entries: ['index.html'],
   },
   build: {
     target: 'esnext',
