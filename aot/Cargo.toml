@@ -7,7 +7,7 @@ description = "RISC-V to WebAssembly AOT compiler"
 [dependencies]
 # ELF parsing (no default features — avoids std::fs dependency on wasm32)
 # Need std for Error trait, elf32/64 for parsing, endian_fd for byte order
-goblin = { version = "0.8", default-features = false, features = ["std", "elf32", "elf64", "endian_fd"] }
+goblin = { version = "0.10", default-features = false, features = ["std", "elf32", "elf64", "endian_fd"] }
 
 # RISC-V decoding
 riscv-decode = "0.2"
