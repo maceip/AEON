@@ -160,19 +160,10 @@ async function exportVFS() {
             emModule._free(dataPtr);
             
             console.log(`[worker] VFS export size: ${size} bytes`);
-            // Slice a copy for OPFS before transferring 'buffer'
-            const tarCopy = new Uint8Array(buffer).slice(0);
-
-            // 1. Send to main thread for snapshot callback
+            
+            // Send to main thread for saving
             sendToMain({ type: 'vfs_export', tarData: buffer }, [buffer]);
-
-            // 2. Also save to OPFS for persistence
-            const root = await navigator.storage.getDirectory();
-            const fileHandle = await root.getFileHandle('persisted_rootfs.tar', { create: true });
-            const writable = await fileHandle.createWritable();
-            await writable.write(tarCopy);
-            await writable.close();
-            console.log('[worker] VFS export complete and persisted');
+            console.log('[worker] VFS export sent to main thread');
         } else {
             console.warn('[worker] VFS export returned empty data');
         }
@@ -197,8 +188,6 @@ async function runResumeLoop() {
     const friscy_get_fetch_request_len = emModule._friscy_get_fetch_request_len;
     const friscy_set_fetch_response = emModule._friscy_set_fetch_response;
 
-    let lastSaveTime = Date.now();
-
     while (friscy_stopped()) {
         if (!controlView || !controlBytes) break;
         const currentCmd = Atomics.load(controlView, SabOffset.COMMAND);
@@ -207,12 +196,6 @@ async function runResumeLoop() {
             console.log('[worker] CMD_EXPORT_VFS detected in loop');
             Atomics.store(controlView, SabOffset.COMMAND, CMD_IDLE);
             await exportVFS();
-        }
-
-        // Periodic auto-save every 30 seconds
-        if (Date.now() - lastSaveTime > 30000) {
-            await exportVFS();
-            lastSaveTime = Date.now();
         }
 
         const cmd = Atomics.load(controlView, SabOffset.COMMAND);
