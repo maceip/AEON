@@ -1,133 +1,193 @@
 #!/usr/bin/env bash
-# docs-lint.sh — validate the knowledge base structure and cross-links.
-# Exit code 0 = all checks pass.  Non-zero = one or more failures.
-
+# docs-lint.sh — validate the AEON knowledge base structure and cross-links.
+# Runs in CI on every push/PR touching docs or source. Exit 1 = failures found.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 ERRORS=0
+WARNS=0
 
-# ---------- helpers ----------
+fail() { echo "::error::$1"; ERRORS=$((ERRORS + 1)); }
+warn() { echo "::warning::$1"; WARNS=$((WARNS + 1)); }
 
-fail() {
-  echo "FAIL: $1" >&2
-  ERRORS=$((ERRORS + 1))
-}
-
-check_file_exists() {
-  if [[ ! -f "$REPO_ROOT/$1" ]]; then
-    fail "Required file missing: $1"
-  fi
-}
-
-check_dir_exists() {
-  if [[ ! -d "$REPO_ROOT/$1" ]]; then
-    fail "Required directory missing: $1"
-  fi
-}
-
-# ---------- 1. Required files ----------
-
-echo "=== Checking required files ==="
-
-REQUIRED_FILES=(
-  AGENTS.md
-  docs/ARCHITECTURE.md
-  docs/DESIGN.md
-  docs/FRONTEND.md
-  docs/PLANS.md
-  docs/PRODUCT_SENSE.md
-  docs/QUALITY_SCORE.md
-  docs/RELIABILITY.md
-  docs/SECURITY.md
-  docs/design-docs/index.md
-  docs/exec-plans/tech-debt-tracker.md
-  docs/product-specs/index.md
-)
-
-for f in "${REQUIRED_FILES[@]}"; do
-  check_file_exists "$f"
+# -----------------------------------------------------------------------
+# 1. Required root files
+# -----------------------------------------------------------------------
+echo "=== Checking required root files ==="
+for f in AGENTS.md ARCHITECTURE.md README.md; do
+    if [[ ! -f "$REPO_ROOT/$f" ]]; then
+        fail "Required root file missing: $f"
+    fi
 done
 
-# ---------- 2. Required directories ----------
-
+# -----------------------------------------------------------------------
+# 2. Required directories
+# -----------------------------------------------------------------------
 echo "=== Checking required directories ==="
-
-REQUIRED_DIRS=(
-  docs/design-docs
-  docs/exec-plans/active
-  docs/exec-plans/completed
-  docs/generated
-  docs/product-specs
-  docs/references
-)
-
+REQUIRED_DIRS=(docs docs/assets docs/exec-plans runtime src src/lib src/workers friscy-bundle scripts)
 for d in "${REQUIRED_DIRS[@]}"; do
-  check_dir_exists "$d"
+    if [[ ! -d "$REPO_ROOT/$d" ]]; then
+        fail "Required directory missing: $d/"
+    fi
 done
 
-# ---------- 3. Cross-link validation ----------
+# -----------------------------------------------------------------------
+# 3. ARCHITECTURE.md file references must exist
+# -----------------------------------------------------------------------
+echo "=== Checking ARCHITECTURE.md file references ==="
+while IFS= read -r path; do
+    # Skip wildcards, vendor, large binaries
+    [[ "$path" == *'*'* || "$path" == *'{'* ]] && continue
+    [[ "$path" == vendor/* ]] && continue
+    [[ "$path" == *friscy.wasm* || "$path" == *rootfs.tar* || "$path" == *rv2wasm_jit* ]] && continue
+    [[ "$path" == *claude-repl.ckpt* ]] && continue
+    # Skip bare filenames (no directory separator) — they're relative within sections
+    [[ "$path" != */* ]] && continue
+    if [[ ! -e "$REPO_ROOT/$path" ]]; then
+        fail "ARCHITECTURE.md references '$path' but it does not exist"
+    fi
+done < <(grep -oP '`[a-zA-Z][a-zA-Z0-9_/.\-]+\.(ts|tsx|js|hpp|cpp|rs|toml|json|html|css|wasm|txt|md|yml|ckpt|sh)`' "$REPO_ROOT/ARCHITECTURE.md" 2>/dev/null | tr -d '`' | sort -u)
 
-echo "=== Checking cross-links in AGENTS.md ==="
+# -----------------------------------------------------------------------
+# 4. ARCHITECTURE.md must mention key components
+# -----------------------------------------------------------------------
+echo "=== Checking ARCHITECTURE.md covers key systems ==="
+KEY_COMPONENTS=(
+    "checkpoint"
+    "overlay"
+    "FriscyMachine"
+    "PackageManager"
+    "emulator.worker"
+    "SharedArrayBuffer"
+    "Web Lock"
+    "libriscv"
+)
+for component in "${KEY_COMPONENTS[@]}"; do
+    if ! grep -qi "$component" "$REPO_ROOT/ARCHITECTURE.md"; then
+        fail "ARCHITECTURE.md does not mention: $component"
+    fi
+done
 
-# Extract markdown links from AGENTS.md and verify targets exist.
-while IFS= read -r link; do
-  # Strip trailing ) and any anchor
-  target="${link%%#*}"
-  target="${target%%)*}"
-  if [[ -z "$target" || "$target" == http* ]]; then
-    continue
-  fi
-  if [[ ! -e "$REPO_ROOT/$target" ]]; then
-    fail "AGENTS.md links to non-existent target: $target"
-  fi
-done < <(grep -oP '\]\(\K[^)]+' "$REPO_ROOT/AGENTS.md" 2>/dev/null || true)
+# -----------------------------------------------------------------------
+# 5. AGENTS.md code layout paths must exist
+# -----------------------------------------------------------------------
+echo "=== Checking AGENTS.md code layout paths ==="
+while IFS= read -r path; do
+    [[ "$path" == *'*'* || "$path" == *'{'* ]] && continue
+    [[ "$path" == vendor/* ]] && continue
+    # Skip bare names without directory separator
+    [[ "$path" != */* ]] && continue
+    trimmed="${path%/}"
+    if [[ ! -e "$REPO_ROOT/$trimmed" ]]; then
+        fail "AGENTS.md references '$path' but it does not exist"
+    fi
+done < <(sed -n '/## Code Layout/,/^## /p' "$REPO_ROOT/AGENTS.md" | grep -oP '`[a-zA-Z][a-zA-Z0-9_/.\-]+/?`' | tr -d '`' | sort -u)
 
-# ---------- 4. No empty docs ----------
+# -----------------------------------------------------------------------
+# 6. Key source exports match documentation claims
+# -----------------------------------------------------------------------
+echo "=== Checking documented exports exist in source ==="
 
+check_export() {
+    local file="$1" symbol="$2" doc="$3"
+    if [[ -f "$REPO_ROOT/$file" ]]; then
+        if ! grep -q "$symbol" "$REPO_ROOT/$file" 2>/dev/null; then
+            fail "$doc says '$file' has '$symbol' but it's not found"
+        fi
+    fi
+}
+
+# FriscyMachine
+check_export "src/lib/FriscyMachine.ts" "async boot" "ARCHITECTURE.md"
+check_export "src/lib/FriscyMachine.ts" "_boot" "ARCHITECTURE.md"
+check_export "src/lib/FriscyMachine.ts" "terminate" "ARCHITECTURE.md"
+check_export "src/lib/FriscyMachine.ts" "PackageManager" "ARCHITECTURE.md"
+
+# Worker checkpoint support
+check_export "src/workers/emulator.worker.ts" "checkpointData" "ARCHITECTURE.md"
+check_export "src/workers/emulator.worker.ts" "load-checkpoint" "ARCHITECTURE.md"
+
+# overlay.js exports
+check_export "friscy-bundle/overlay.js" "computeDelta" "ARCHITECTURE.md"
+check_export "friscy-bundle/overlay.js" "applyDelta" "ARCHITECTURE.md"
+check_export "friscy-bundle/overlay.js" "mergeTars" "ARCHITECTURE.md"
+check_export "friscy-bundle/overlay.js" "createSession" "ARCHITECTURE.md"
+check_export "friscy-bundle/overlay.js" "saveOverlay" "ARCHITECTURE.md"
+
+# PackageManager
+check_export "src/lib/PackageManager.ts" "applyLayers" "ARCHITECTURE.md"
+check_export "src/lib/PackageManager.ts" "loadManifest" "ARCHITECTURE.md"
+
+# checkpoint.hpp
+if [[ ! -f "$REPO_ROOT/runtime/checkpoint.hpp" ]]; then
+    fail "ARCHITECTURE.md documents checkpoint.hpp but file is missing"
+fi
+
+# -----------------------------------------------------------------------
+# 7. Internal markdown links
+# -----------------------------------------------------------------------
+echo "=== Checking internal markdown links ==="
+for md in "$REPO_ROOT/README.md" "$REPO_ROOT/AGENTS.md" "$REPO_ROOT/ARCHITECTURE.md"; do
+    [[ ! -f "$md" ]] && continue
+    while IFS= read -r link; do
+        [[ "$link" == http* || "$link" == '#'* || -z "$link" || "$link" == mailto* ]] && continue
+        link_path="${link%%#*}"
+        [[ -z "$link_path" ]] && continue
+        target="$(dirname "$md")/$link_path"
+        if [[ ! -e "$target" ]]; then
+            fail "$(basename "$md") has broken link: $link"
+        fi
+    done < <(grep -oP '\]\(\K[^)]+' "$md" 2>/dev/null || true)
+done
+
+# -----------------------------------------------------------------------
+# 8. No empty doc files
+# -----------------------------------------------------------------------
 echo "=== Checking for empty documentation files ==="
-
 while IFS= read -r mdfile; do
-  if [[ ! -s "$mdfile" ]]; then
-    rel="${mdfile#"$REPO_ROOT"/}"
-    fail "Empty documentation file: $rel"
-  fi
+    if [[ ! -s "$mdfile" ]]; then
+        rel="${mdfile#"$REPO_ROOT"/}"
+        fail "Empty documentation file: $rel"
+    fi
 done < <(find "$REPO_ROOT/docs" -name '*.md' -type f 2>/dev/null)
 
-# ---------- 5. ARCHITECTURE.md mentions key components ----------
+# -----------------------------------------------------------------------
+# 9. README directory tree vs actual directories
+# -----------------------------------------------------------------------
+echo "=== Checking README.md directory tree ==="
+# Only check top-level dirs (lines starting with ├── or └── at column 0-1 in the tree)
+while IFS= read -r dir; do
+    dir="${dir%/}"
+    [[ -z "$dir" ]] && continue
+    if [[ ! -d "$REPO_ROOT/$dir" ]]; then
+        fail "README.md directory tree lists '$dir/' but it does not exist"
+    fi
+done < <(sed -n '/^```$/,/^```$/p' "$REPO_ROOT/README.md" | grep -P '^[├└]' | grep -oP '(?:├──|└──)\s+(\S+?)/' | sed 's/[├└── ]//g' | tr -d '/' | sort -u)
 
-echo "=== Checking ARCHITECTURE.md covers key components ==="
-
-KEY_COMPONENTS=(runtime aot proxy friscy-pack libriscv)
-for component in "${KEY_COMPONENTS[@]}"; do
-  if ! grep -qi "$component" "$REPO_ROOT/docs/ARCHITECTURE.md"; then
-    fail "ARCHITECTURE.md does not mention component: $component"
-  fi
-done
-
-# ---------- 6. Freshness check ----------
-
-echo "=== Checking doc freshness (warn if >180 days old) ==="
-
+# -----------------------------------------------------------------------
+# 10. Freshness (warn only)
+# -----------------------------------------------------------------------
+echo "=== Checking doc freshness ==="
 NOW=$(date +%s)
-STALE_DAYS=180
-
+STALE_DAYS=90
 while IFS= read -r mdfile; do
-  mod_time=$(stat -c %Y "$mdfile" 2>/dev/null || stat -f %m "$mdfile" 2>/dev/null || echo "$NOW")
-  age_days=$(( (NOW - mod_time) / 86400 ))
-  if [[ $age_days -gt $STALE_DAYS ]]; then
-    rel="${mdfile#"$REPO_ROOT"/}"
-    echo "WARN: $rel is $age_days days old (>${STALE_DAYS} days)" >&2
-  fi
-done < <(find "$REPO_ROOT/docs" "$REPO_ROOT/AGENTS.md" -name '*.md' -type f 2>/dev/null)
+    mod_time=$(stat -c %Y "$mdfile" 2>/dev/null || stat -f %m "$mdfile" 2>/dev/null || echo "$NOW")
+    age_days=$(( (NOW - mod_time) / 86400 ))
+    if [[ $age_days -gt $STALE_DAYS ]]; then
+        rel="${mdfile#"$REPO_ROOT"/}"
+        warn "$rel has not been updated in $age_days days"
+    fi
+done < <(find "$REPO_ROOT/docs" "$REPO_ROOT/AGENTS.md" "$REPO_ROOT/ARCHITECTURE.md" -name '*.md' -type f 2>/dev/null)
 
-# ---------- Summary ----------
-
+# -----------------------------------------------------------------------
+# Summary
+# -----------------------------------------------------------------------
 echo ""
+echo "Errors: $ERRORS | Warnings: $WARNS"
 if [[ $ERRORS -gt 0 ]]; then
-  echo "docs-lint: $ERRORS error(s) found." >&2
-  exit 1
+    echo "FAILED: $ERRORS documentation error(s) found."
+    exit 1
 else
-  echo "docs-lint: all checks passed."
-  exit 0
+    echo "PASSED: All documentation checks passed."
+    exit 0
 fi

@@ -1,0 +1,61 @@
+version: 2
+updates:
+  # npm (TypeScript/Vite frontend)
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 10
+    reviewers:
+      - maceip
+    labels:
+      - dependencies
+      - npm
+    groups:
+      vite:
+        patterns:
+          - "vite*"
+          - "@vitejs/*"
+      testing:
+        patterns:
+          - "vitest*"
+          - "@testing-library/*"
+      xterm:
+        patterns:
+          - "xterm*"
+          - "@xterm/*"
+
+  # Rust (AOT compiler + JIT)
+  - package-ecosystem: cargo
+    directory: /aot
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    reviewers:
+      - maceip
+    labels:
+      - dependencies
+      - rust
+
+  - package-ecosystem: cargo
+    directory: /aot-jit
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    reviewers:
+      - maceip
+    labels:
+      - dependencies
+      - rust
+
+  # GitHub Actions
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    labels:
+      - dependencies
+      - ci

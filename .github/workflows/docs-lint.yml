@@ -1,22 +1,35 @@
 name: Docs Lint
 
 on:
-  pull_request:
-    paths:
-      - "docs/**"
-      - "AGENTS.md"
-      - "scripts/docs-lint.sh"
   push:
     branches: [master]
     paths:
-      - "docs/**"
-      - "AGENTS.md"
-      - "scripts/docs-lint.sh"
+      - '*.md'
+      - 'docs/**'
+      - 'src/lib/**'
+      - 'src/workers/**'
+      - 'src/types/**'
+      - 'runtime/*.hpp'
+      - 'runtime/*.cpp'
+      - 'friscy-bundle/overlay.js'
+      - 'scripts/docs-lint.sh'
+  pull_request:
+    paths:
+      - '*.md'
+      - 'docs/**'
+      - 'src/lib/**'
+      - 'src/workers/**'
+      - 'src/types/**'
+      - 'runtime/*.hpp'
+      - 'runtime/*.cpp'
+      - 'friscy-bundle/overlay.js'
+      - 'scripts/docs-lint.sh'
 
 jobs:
-  docs-lint:
+  lint-docs:
+    name: Validate Knowledge Base
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Lint documentation structure and cross-links
+      - name: Run docs linter
         run: bash scripts/docs-lint.sh
