@@ -1,46 +1,53 @@
-# Frontend & UI
+# Frontend
 
-## Browser Runtime (`friscy-bundle/`)
+## Stack
+- **Framework:** React 18 + TypeScript
+- **Build:** Vite with PWA plugin (workbox)
+- **Terminal:** xterm.js + WebGL addon + fit addon
+- **3D:** Three.js + React Three Fiber (AppShelf3D, future holographic views)
+- **Drag & Drop:** @dnd-kit/sortable
+- **Styling:** Tailwind CSS + custom index.css layers
 
-The output of `friscy-pack` is a self-contained directory that can be served
-by any static HTTP server:
+## Architecture
 
-```
-friscy-bundle/
-├── index.html          # Entry point — loads friscy.js
-├── manifest.json       # Bundle metadata (image name, pack date)
-├── friscy.js           # Emscripten-generated JS glue (~1.2 MB)
-├── friscy.wasm         # Compiled libriscv + syscall layer (~1.8 MB)
-├── rootfs.tar          # Extracted container filesystem
-├── network_bridge.js   # WebSocket ↔ socket bridge
-└── service-worker.js   # Offline caching (optional)
-```
+The frontend is a thin shell around `FriscyMachine`. The machine handles all emulator lifecycle -- boot, stdin/stdout, persistence, file mounting. The frontend renders terminal output and provides UI controls.
 
-### Terminal
+### Key Components
 
-The browser UI embeds an xterm.js terminal that wires to the Emscripten
-runtime's stdin/stdout.  Interactive sessions (shell, Python REPL) work
-via the terminal ioctl support added in workstream D.
+| Component | Purpose |
+|-----------|---------|
+| `App.tsx` | Root layout, machine instantiation, global controls |
+| `TerminalView.tsx` | xterm.js wrapper, stdin/stdout wiring, drag-drop file handling |
+| `SupportingView.tsx` | Side panel for apps (notepad, git, config, etc.) |
+| `MachineContainer.tsx` | Machine lifecycle UI (boot, error, progress) |
+| `IntroOverlay.tsx` | Boot sequence animation |
+| `FuturisticNotepad.tsx` | Markdown notepad with localStorage persistence |
+| `FriscyMachine.ts` | Machine orchestrator -- boot, polling, overlay persistence |
 
-### Networking
+### Browser API Integration
 
-In-browser networking uses a WebSocket bridge (`network_bridge.js`) that
-connects to a host-side Go proxy (`proxy/main.go`).  Socket syscalls in
-the Wasm runtime create WebSocket connections; the proxy opens real TCP/UDP
-sockets on the host.
+All browser APIs are feature-detected. The app works without them.
 
-## Native Runtime
+| API | Purpose | Fallback |
+|-----|---------|----------|
+| File System Access | Mount local folders into `/mnt/host/` | Feature hidden |
+| OPFS | Persistent overlay filesystem | No persistence |
+| Keyboard Lock | Capture Ctrl+C, F-keys for terminal | Browser handles keys |
+| Document PiP | Floating terminal window | `window.open()` |
+| Compute Pressure | Adaptive CPU throttling | Fixed batch size |
+| View Transitions | Smooth panel switching | Instant DOM swap |
+| Local Font Access | User's monospace fonts | Default font |
+| Window Controls Overlay | PWA title bar status | Standard title bar |
+| FileSystemObserver | Watch mounted folder for changes | No auto-refresh |
+| Compression Streams | Native gzip decompress for rootfs | Raw tar fetch |
+| scheduler.yield() | Keep UI responsive during emulation | setInterval polling |
+| Web Locks | Single-tab ownership | No coordination |
+| Storage Buckets | Eviction-resistant OPFS storage | Default OPFS |
+| EyeDropper | Terminal color theming | Manual hex input |
 
-For development and testing, friscy can be built as a native Linux binary:
+### PWA Manifest
 
-```bash
-cd runtime && mkdir build-native && cd build-native
-cmake .. -DCMAKE_BUILD_TYPE=Release && make -j$(nproc)
-./friscy --rootfs /path/to/rootfs.tar /path/to/binary
-```
-
-## Future
-
-- **AOT mode**: `friscy-pack --aot` will pre-compile RISC-V code to Wasm via
-  rv2wasm for 5-20x speedup over interpretation.
-- **Wizer snapshots**: Pre-initialized Wasm modules for sub-500ms cold start.
+`public/.well-known/manifest.json` declares:
+- `"display_override": ["window-controls-overlay", "minimal-ui"]`
+- File handlers for `.tar`, `.img` files (future)
+- Launch handler for single-instance focus

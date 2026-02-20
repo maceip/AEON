@@ -1,8 +1,11 @@
-# Product Specs — Index
+# Product Specs -- Index
 
 | Spec | Status | Owner |
 |------|--------|-------|
-| (none yet) | — | — |
+| overlay-persistence | Active | Phase 1 |
+| package-layers | Active | Phase 1D-1E |
+| freehold-dns | Planned | Phase 2A-bis |
+| multi-tab-shared-machine | Deferred | Future |
 
 ## How to add a spec
 

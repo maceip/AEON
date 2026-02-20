@@ -1,71 +1,96 @@
-# friscy
+# AGENTS.md
 
-friscy runs Docker containers in the browser. It cross-compiles containers to
-RISC-V 64-bit, emulates them in libriscv (userland only, no kernel), and
-compiles the emulator to WebAssembly via Emscripten. Hot code paths are
-JIT-compiled from RISC-V to native Wasm at runtime.
+Instructions for AI agents working on this codebase.
 
-## Architecture
+## Project Overview
 
-See `ARCHITECTURE.md` for the codemap, invariants, and system boundaries.
+AEON is a browser-native RISC-V Linux emulator. It runs real Linux binaries (from Docker container images) inside a WebAssembly emulator in the browser, with JSPI-based async I/O, a JIT compiler (RISC-V -> Wasm), and OPFS-based persistence with overlay filesystem layers.
 
-## Code layout
+Read `ARCHITECTURE.md` first. It is the source of truth for how the system works.
+
+## Agent Coordination
+
+Multiple agents may work on this codebase simultaneously. Coordination happens through:
+
+- **`docs/exec-plans/active/`** -- current execution plans. Check here before starting work.
+- **`TODAY.md`** -- the day's prioritized implementation plan. Phases are sequential.
+- **`work-tasks.md`** -- inter-agent task queue. Append tasks to the bottom. Mark completed tasks with `[x]`.
+
+When you start working on a task, note it in the relevant exec plan. When you finish, update the plan's progress section with what you did and any surprises encountered.
+
+## Code Layout
 
 | Path | What lives there |
 |------|------------------|
 | `runtime/` | C++ emulator: libriscv integration, syscall handlers, VFS, ELF loader |
+| `runtime/library_vectorheart.js` | VectorHeart JSPI bridge -- the async I/O layer between guest syscalls and browser APIs |
 | `aot/` | Rust AOT compiler (`rv2wasm`): RISC-V ELF to standalone Wasm |
 | `aot-jit/` | Rust JIT tier: `rv2wasm` compiled to wasm32 via wasm-bindgen |
-| `friscy-bundle/` | Browser deployment: HTML shell, Worker, JIT manager, network bridge |
+| `friscy-bundle/` | Browser deployment: HTML shell, Worker, JIT manager, network bridge, overlay.js |
+| `src/` | React frontend: TypeScript + Vite |
+| `src/lib/FriscyMachine.ts` | Machine lifecycle -- boot, polling, persistence, stdin/stdout orchestrator |
+| `src/workers/emulator.worker.ts` | Vite-mode Web Worker for the React frontend |
 | `vendor/libriscv/` | RISC-V emulator library (upstream, with local patches) |
-| `tools/` | Dockerfiles for guest rootfs images |
 | `proxy/` | Go WebTransport-to-TCP network proxy |
-| `tests/` | Integration tests (Node.js scripts) |
-| `docs/` | All documentation beyond this file and ARCHITECTURE.md |
+| `sync-server/` | WebSocket sync server for multi-device state sync |
+| `tests/` | Integration tests (Node.js + Playwright scripts) |
+| `docs/` | All documentation beyond ARCHITECTURE.md |
 
-## docs/ structure
+## Architecture Invariants (DO NOT VIOLATE)
 
-| Path | Contents |
-|------|----------|
-| `docs/DESIGN.md` | Design philosophy: userland emulation, libriscv, Emscripten |
-| `docs/FRONTEND.md` | Browser UI, xterm.js, Worker communication |
-| `docs/SECURITY.md` | Wasm sandbox model, network proxy trust boundaries |
-| `docs/RELIABILITY.md` | Syscall coverage guarantees, crash handling, VFS durability |
-| `docs/PLANS.md` | Roadmap, milestones, current focus |
-| `docs/design-docs/` | Architecture Decision Records (ADR log) |
-| `docs/exec-plans/` | Execution plans: `active/`, `completed/`, `tech-debt-tracker.md` |
-| `docs/product-specs/` | Feature specs |
-| `docs/references/` | Reference material (LLM-friendly docs, external specs) |
-| `docs/generated/` | Auto-generated documentation |
+1. The Worker thread never touches the DOM.
+2. Syscall handlers never call `machine.simulate()` or `machine.resume()`.
+3. The simulate loop never does I/O directly -- all I/O goes through syscall handlers or `EM_ASM` bridges.
+4. `postMessage` is only used for setup -- runtime communication uses SharedArrayBuffer + Atomics.
+5. JSPI-suspended functions (`js_opfs_io`, `js_net_proxy`, `js_dns_resolve`) never throw into the C++ stack. They catch internally and return -1 on error.
+6. Sync fast-path functions (`js_compute_offload`, `js_gettime_ms`) are NOT on JSPI_IMPORTS -- zero suspension overhead.
+7. Persistence has ONE write path. Do not add redundant OPFS writes. See TODAY.md Phase 1A.
 
-## Build commands
+## Quality Standards
 
-```bash
-# Emscripten (Docker) — produces friscy.wasm + friscy.js
-docker run --rm -v $(pwd):/src emscripten/emsdk:latest bash -c \
-  "cd /src && mkdir -p build-wasm && cd build-wasm && emcmake cmake ../runtime && emmake make -j\$(nproc)"
-cp build-wasm/friscy.{js,wasm} friscy-bundle/
+- No mocked or simulated implementations. Real tests against real behavior.
+- Feature-detect all browser APIs. Graceful degradation is mandatory.
+- No Asyncify (`-sASYNCIFY`). Use JSPI (`-sJSPI=1`) for async I/O.
+- Wasm exceptions must be final-spec (`-fwasm-exceptions`), never legacy.
+- Every exec plan must be self-contained: a novice with only the repo and the plan should succeed end-to-end.
 
-# Native
-mkdir -p build-native && cd build-native && cmake ../runtime && make -j$(nproc)
+## Common Pitfalls
 
-# AOT compiler
-cd aot && cargo build --release
+1. **rootfsData transfer:** `postMessage(data, [data])` transfers ownership -- the sender loses the ArrayBuffer. `.slice()` first if you need to keep a copy.
+2. **OPFS in Workers only:** `createSyncAccessHandle()` only works in dedicated Workers, not the main thread.
+3. **SharedArrayBuffer requires cross-origin isolation:** COOP/COEP headers (or Document-Isolation-Policy) must be set.
+4. **Arena is 31-bit (2GB):** Guest addresses are `addr & 0x7FFFFFFF`. The remaining ~1GB is Emscripten's heap.
+5. **JIT invalidation:** When `mprotect(PROT_WRITE)` hits a JIT'd page, the compiled function must be evicted.
+6. **`applyDelta` vs `mergeTars`:** `applyDelta` takes `{added, modified, deleted}` delta objects. Package tars need `mergeTars` (tar union). They are different operations.
 
-# JIT tier (wasm32)
-cd aot-jit && wasm-pack build --target web
+## Exec Plan Format
 
-# Guest rootfs
-docker buildx build --platform linux/riscv64 -f tools/Dockerfile.claude -t friscy-claude . --load
+Plans in `docs/exec-plans/active/` follow this structure:
 
-# Serve web shell (requires COOP/COEP for SharedArrayBuffer)
-node friscy-bundle/serve.js 9000
+```markdown
+# [Title]
+
+## Purpose
+What the user can do after this change that they could not do before.
+
+## Context
+Current state, key files, terminology defined in plain language.
+
+## Plan of Work
+Sequence of concrete edits with file paths.
+
+## Validation
+Observable behavior verification -- not just "tests pass" but what a human sees.
+
+## Progress
+- [ ] Step 1 (timestamp when started/completed)
+- [ ] Step 2
+
+## Surprises & Discoveries
+Unexpected findings with evidence.
+
+## Decision Log
+All decisions with rationale and dates.
 ```
 
-## Conventions
-
-- Runtime C++ is header-only: `syscalls.hpp`, `network.hpp`, `vfs.hpp`, `elf_loader.hpp` are included from `main.cpp`.
-- Emscripten flags: always use `-fwasm-exceptions -sWASM_LEGACY_EXCEPTIONS=0` at both compile and link. Never use legacy exception handling.
-- Shared memory: `-sSHARED_MEMORY=1 -matomics -mbulk-memory` on all translation units.
-- AOT compiler uses `wasm-encoder 0.201.0` (API: `ty`/`table`, not `type_index`/`table_index`).
-- Rust toolchain: `export PATH="$HOME/.cargo/bin:$PATH"` before cargo commands.
+Plans must be self-contained. Every term of art must be defined in plain language or not used.

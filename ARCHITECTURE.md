@@ -1,11 +1,11 @@
 # Architecture
 
-This document describes the high-level architecture of friscy. If you want to
-familiarize yourself with the code base, you are in the right place.
+This document describes the high-level architecture of AEON (forked from friscy).
+If you want to familiarize yourself with the code base, you are in the right place.
 
 ## Bird's Eye View
 
-friscy takes a Docker container image (cross-compiled for RISC-V 64-bit),
+AEON takes a Docker container image (cross-compiled for RISC-V 64-bit),
 extracts its root filesystem as a tar archive, and runs the entrypoint binary
 inside a userland RISC-V emulator. There is no kernel — the ~80 Linux syscalls
 that guest code invokes are handled by the host in C++. The emulator is compiled
