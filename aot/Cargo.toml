@@ -13,7 +13,7 @@ goblin = { version = "0.8", default-features = false, features = ["std", "elf32"
 riscv-decode = "0.2"
 
 # Wasm generation
-wasm-encoder = "0.201"
+wasm-encoder = "0.245"
 
 # CLI (optional — not needed for wasm32 JIT usage)
 clap = { version = "4", features = ["derive"], optional = true }
