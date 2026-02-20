@@ -27,4 +27,4 @@ default = ["cli"]
 cli = ["clap"]
 
 [dev-dependencies]
-wasmparser = "0.201"
+wasmparser = "0.245"
