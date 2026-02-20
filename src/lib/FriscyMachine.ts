@@ -1,6 +1,6 @@
 // src/lib/FriscyMachine.ts
 // @ts-ignore
-import { saveOverlay, loadOverlay } from '../../friscy-bundle/overlay.js';
+import { saveOverlay, loadOverlay, computeDelta, applyDelta, createSession } from '../../friscy-bundle/overlay.js';
 
 export enum SabOffset {
     COMMAND = 0,
@@ -53,6 +53,8 @@ export class FriscyMachine {
   private pollInterval: any = null;
   private saveInterval: any = null;
   private stdinQueue: number[] = [];
+  private baseTar: ArrayBuffer | null = null;
+  private sessionId: string | null = null;
   
   // Stats to track
   public instructionCount: number = 0;
@@ -108,15 +110,7 @@ export class FriscyMachine {
 
     await readyPromise;
 
-    try {
-        const overlay = await loadOverlay(this.config.id);
-        if (overlay) {
-            console.log(`[machine] Loaded persistent overlay (${(overlay.byteLength/1024).toFixed(1)}KB)`);
-        }
-    } catch (e) {
-        console.warn('[machine] Failed to load overlay:', e);
-    }
-
+    // Fetch or use provided rootfs
     let rootfsData: ArrayBuffer;
     if (existingRootfs) {
         rootfsData = existingRootfs;
@@ -134,16 +128,37 @@ export class FriscyMachine {
         }
     }
 
+    // Keep a copy of the base rootfs for delta computation (Phase 1B/1C)
+    this.baseTar = rootfsData.slice(0);
+
+    // Create or open session, then try to restore overlay delta
+    try {
+        const session = await createSession(this.config.id, this.config.name);
+        this.sessionId = session.sessionId;
+        console.log(`[machine] Session: ${this.sessionId}`);
+
+        const overlayData = await loadOverlay(this.config.id);
+        if (overlayData) {
+            const delta = JSON.parse(new TextDecoder().decode(new Uint8Array(overlayData)));
+            const merged = applyDelta(this.baseTar, delta);
+            rootfsData = merged.buffer;
+            console.log(`[machine] Restored overlay delta (${(overlayData.byteLength/1024).toFixed(1)}KB delta → ${(rootfsData.byteLength/1024).toFixed(1)}KB merged)`);
+        }
+    } catch (e) {
+        console.warn('[machine] Failed to restore overlay, booting fresh:', e);
+    }
+
     this.setStatus('booting');
     this.setProgress(-1, 'Booting RISC-V kernel...');
-    
-    const entrypoint = Array.isArray(this.config.entrypoint) 
-        ? this.config.entrypoint 
+
+    const entrypoint = Array.isArray(this.config.entrypoint)
+        ? this.config.entrypoint
         : this.config.entrypoint.split(' ').filter(s => s);
-            
+
     const envArgs = (this.config.env || []).flatMap(e => ['--env', e]);
     const args = [...envArgs, '--rootfs', '/rootfs.tar', ...entrypoint];
 
+    // Transfer rootfsData to worker (we have baseTar as our copy)
     this.worker.postMessage({
         type: 'run',
         args,
@@ -175,9 +190,20 @@ export class FriscyMachine {
     } else if (msg.type === 'error') {
       this.setStatus('error');
     } else if (msg.type === 'vfs_export') {
-        saveOverlay(this.config.id, msg.tarData).then(() => {
-            console.log('[machine] Auto-saved VFS state');
-        });
+        if (this.baseTar && this.sessionId) {
+            try {
+                const delta = computeDelta(this.baseTar, msg.tarData);
+                const encoded = new TextEncoder().encode(JSON.stringify(delta));
+                saveOverlay(this.sessionId, encoded).then(() => {
+                    console.log(`[machine] Auto-saved delta (${(encoded.byteLength/1024).toFixed(1)}KB)`);
+                });
+            } catch (e) {
+                console.error('[machine] Delta computation failed, saving full tar:', e);
+                saveOverlay(this.config.id, msg.tarData);
+            }
+        } else {
+            saveOverlay(this.config.id, msg.tarData);
+        }
     }
   }
 

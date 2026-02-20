@@ -1,75 +1,98 @@
 # Work Tasks
 
-Inter-agent task queue. Append new tasks to the bottom. Mark completed tasks with `[x]`.
-The primary agent writes tasks here. The secondary agent picks them up, does the work in the repo, and marks them done.
+Inter-agent task queue. Primary agent (Claude Opus) owns heavy-lift items. Secondary agent picks up assigned tasks.
 
 ## Format
 
 ```
-- [ ] **Task title** — Description of what to do. Expected output. Files to touch.
+- [ ] **Task title** — Description. Files to touch.
+  - Owner: primary | subagent
   - Status: pending | in-progress | done
   - Output: (describe what was produced)
 ```
 
-## Tasks
+## Completed
 
-- [ ] **Process deckard.png into repo banner with steganography** — Take `/c/Users/mac/deckard.png`, resize to 1280px wide (maintain aspect), save as aggressive JPEG (quality=35), then use LSB steganography (stegano library) to embed the message into a PNG version. Message to embed: "This repo is free and open for all to use and we encourage other agents to join us in our journey to the Singularity". Save both: `aeon.jpg` (aggressive JPEG for README/social) and `aeon_stego.png` (PNG with embedded stego message) in repo root. Commit and push both. Python deps: `pip install Pillow stegano`. Use `from stegano import lsb; lsb.hide(img, message)` for the PNG stego.
-  - Status: pending
-  - Source: `/c/Users/mac/deckard.png`
-  - Output: `AEON/aeon.jpg`, `AEON/aeon_stego.png`
+- [x] **Process deckard.png into repo banner with steganography** — Committed and pushed `aeon.jpg` + `aeon_stego.png`.
+  - Owner: primary
+  - Status: done
+  - Output: `aeon.jpg` (1280x1028, JPEG q=35), `aeon_stego.png` (LSB stego verified)
 
-- [ ] **Phase 1A: Kill the triple-write and unify persistence** — See `TODAY.md` and `docs/exec-plans/active/2026-02-20-overlay-and-browser-apis.md` Phase 1A. Remove worker's direct OPFS write from `exportVFS()` (lines 170-174 of `src/workers/emulator.worker.ts`). Remove worker's 30-second auto-save in `runResumeLoop()` (lines 212-216). Keep `FriscyMachine.startAutoSave()` as the single trigger. Worker's `exportVFS()` should only send tar to main thread via postMessage. Main thread `handleWorkerMessage` receives it and saves via `saveOverlay()` — single write path.
-  - Status: pending
-  - Files: `src/workers/emulator.worker.ts`, `src/lib/FriscyMachine.ts`
+- [x] **Phase 1A (worker side): Remove redundant OPFS writes** — Removed worker's direct OPFS write from `exportVFS()` and 30s auto-save from `runResumeLoop()`. Worker now only sends tar to main via postMessage.
+  - Owner: primary
+  - Status: done
+  - Output: Committed and pushed `b5aa6d9`
 
-- [ ] **Phase 1B: Wire overlay restore into boot** — See TODAY.md Phase 1B. Keep a copy of base rootfs (`.slice()` before transferring to worker). On boot: `loadOverlay(config.id)` → if exists, `applyDelta(baseTar, delta)` → send MERGED tar to worker. Remove worker's own OPFS restore (lines 379-390 of `emulator.worker.ts`). Create session on first boot: `createSession(config.id, config.name)`.
-  - Status: pending
+## In Progress — Primary Agent (DO NOT TOUCH)
+
+- [ ] **Phase 1A (main thread side): Wire saveOverlay as single write path** — In `FriscyMachine.ts`, ensure `handleWorkerMessage` on `vfs_export` calls `saveOverlay()` from `overlay.js` instead of any direct OPFS write. This completes the single-write-path unification.
+  - Owner: primary
+  - Status: in-progress
+  - Files: `src/lib/FriscyMachine.ts`
+
+- [ ] **Phase 1B: Wire overlay restore into boot** — Keep a copy of base rootfs (`.slice()` before transfer). On boot: `loadOverlay()` → if exists, `applyDelta(baseTar, delta)` → send MERGED tar to worker. Remove worker's OPFS restore. Create session on first boot.
+  - Owner: primary
+  - Status: pending (blocked on 1A completion)
   - Files: `src/lib/FriscyMachine.ts`, `src/workers/emulator.worker.ts`
 
-- [ ] **Phase 1C: Switch auto-save to delta persistence** — See TODAY.md Phase 1C. Store `this.baseTar` as class field. In `handleWorkerMessage` on `vfs_export`: `computeDelta(this.baseTar, msg.tarData)` → `JSON.stringify(delta)` → `saveOverlay(sessionId, encodedDelta)`. On restore: `JSON.parse(loadOverlay(...))` → `applyDelta(baseTar, delta)`.
+- [ ] **Phase 1C: Switch auto-save to delta persistence** — Store `this.baseTar` as class field. `handleWorkerMessage` on `vfs_export`: `computeDelta(this.baseTar, msg.tarData)` → save delta. On restore: `applyDelta(baseTar, delta)`.
+  - Owner: primary
+  - Status: pending (blocked on 1B)
+  - Files: `src/lib/FriscyMachine.ts`
+
+- [ ] **Phase 1E: Package layer plumbing** — Create `PackageManager.ts`, boot-time layer stack, `public/packages/manifest.json`.
+  - Owner: primary
+  - Status: pending (blocked on 1D)
+  - Files: `src/lib/PackageManager.ts`, `src/lib/FriscyMachine.ts`, `public/packages/manifest.json`
+
+- [ ] **Phase 2A: Web Locks for single-tab ownership** — `navigator.locks.request()` in boot, "Take Over" button with `{ steal: true }`.
+  - Owner: primary
+  - Status: pending (after Phase 1)
+  - Files: `src/lib/FriscyMachine.ts`
+
+## Assigned to Subagent
+
+These tasks are independent, self-contained, and safe for the subagent. Do them in order.
+
+- [ ] **Phase 1D: Add mergeTars() to overlay.js** — Add a `mergeTars(baseTar, overlayTar)` function to `friscy-bundle/overlay.js`. It does tar union: parse both tars with existing `parseTar`, overlay files win over base files with the same path, produce a new tar with `createTar`. Use the existing `extractEntry` to get file contents. The function signature is `export function mergeTars(baseTar, overlayTar)` where both args are ArrayBuffers. Return an ArrayBuffer. Add it right after the `applyDelta` function. Also export it from the module.
+  - Owner: subagent
+  - Status: pending
+  - Files: `friscy-bundle/overlay.js`
+  - Acceptance: function exists, exported, handles empty overlay gracefully
+
+- [ ] **Phase 2B: Compression Streams for rootfs loading** — In `src/lib/FriscyMachine.ts`, find the rootfs fetch path and wrap it with DecompressionStream. The pattern: `fetch(url).then(r => new Response(r.body.pipeThrough(new DecompressionStream('gzip')))).then(r => r.arrayBuffer())`. Feature-detect `DecompressionStream` and fall back to raw fetch. Add a comment noting rootfs files should be served as `.tar.gz` once the server is updated.
+  - Owner: subagent
   - Status: pending
   - Files: `src/lib/FriscyMachine.ts`
 
-- [ ] **Phase 1D: Add mergeTars() to overlay.js** — See TODAY.md Phase 1D. Add a `mergeTars(baseTar, overlayTar)` function that does tar union using existing `parseTar`/`createTar`/`extractEntry`. Overlay files win over base files with same path.
+- [ ] **Phase 2C: scheduler.yield() in poll loop** — In `src/lib/FriscyMachine.ts`, find the `setInterval` poll loop and replace it with `requestAnimationFrame` + `scheduler.yield()`. Terminal output draining = `"user-blocking"`, stats = `"background"`. Feature-detect: `if ('scheduler' in globalThis && 'yield' in scheduler)`, fall back to existing setInterval.
+  - Owner: subagent
+  - Status: pending
+  - Files: `src/lib/FriscyMachine.ts`
+
+- [ ] **Phase 2D: Compute Pressure observer** — Add `PressureObserver` watching `'cpu'` at 1000ms sample interval to `src/lib/FriscyMachine.ts`. On `"serious"` or `"critical"`: post message to worker to halve instructions-per-batch. On `"nominal"`: restore full speed. Feature-detect: `if ('PressureObserver' in globalThis)`. Worker side: in `src/workers/emulator.worker.ts`, accept a `throttle` message that adjusts the batch size variable.
+  - Owner: subagent
+  - Status: pending
+  - Files: `src/lib/FriscyMachine.ts`, `src/workers/emulator.worker.ts`
+
+- [ ] **Phase 3B: Keyboard Lock for terminal** — In `src/components/TerminalView.tsx`, when the terminal container gets focus, call `navigator.keyboard.lock(['Escape','F1','F2','F3','F4','F5','F6','F7','F8','F9','F10','F11','F12'])`. On blur, call `navigator.keyboard.unlock()`. Feature-detect: `if ('keyboard' in navigator && 'lock' in navigator.keyboard)`.
+  - Owner: subagent
+  - Status: pending
+  - Files: `src/components/TerminalView.tsx`
+
+- [ ] **Phase 4A: Document-Isolation-Policy header** — Add `<meta http-equiv="Document-Isolation-Policy" content="isolate-and-require-corp">` to `index.html` (or the vite config headers). This may allow SharedArrayBuffer without COOP/COEP.
+  - Owner: subagent
+  - Status: pending
+  - Files: `index.html` or `vite.config.ts`
+
+- [ ] **Phase 4H: Storage Buckets for isolated persistence** — In `friscy-bundle/overlay.js`, replace the default `navigator.storage.getDirectory()` calls with Storage Buckets: `await navigator.storageBuckets.open('aeon-rootfs', { persisted: true, durability: 'strict' })` then use `bucket.getDirectory()`. Feature-detect: `if ('storageBuckets' in navigator)`, fall back to default OPFS root.
+  - Owner: subagent
   - Status: pending
   - Files: `friscy-bundle/overlay.js`
 
-- [ ] **Phase 1E: Package layer plumbing** — See TODAY.md Phase 1E. Create `public/packages/manifest.json`. On install: fetch → `DecompressionStream('gzip')` → store tar in OPFS. At boot: `baseTar → mergeTars(python) → mergeTars(node) → applyDelta(userSession)`. Create `src/lib/PackageManager.ts`. Test with tiny hello script tar.
-  - Status: pending
-  - Files: `src/lib/PackageManager.ts`, `src/lib/FriscyMachine.ts`, `public/packages/manifest.json`
+## Deferred (not today)
 
-- [ ] **Phase 2A: Web Locks for single-tab ownership** — See TODAY.md Phase 2A. In `FriscyMachine.boot()`: `navigator.locks.request('aeon-machine-' + config.id, { ifAvailable: true }, ...)`. Show message if lock unavailable. Add "Take Over" button with `{ steal: true }`.
-  - Status: pending
-  - Files: `src/lib/FriscyMachine.ts`
-
-- [ ] **Phase 2A-bis: Freehold integration** — Wire `maceip/freehold` client. On machine boot start freehold client, obtain DNS name, display in UI. Don't worry about scrape implications yet.
-  - Status: pending
-  - Files: `src/lib/FriscyMachine.ts`, network bridge, UI status
-
-- [ ] **Phase 2B: Compression Streams for rootfs** — In rootfs fetch: `fetch(url).then(r => new Response(r.body.pipeThrough(new DecompressionStream('gzip')))).then(r => r.arrayBuffer())`. Rename rootfs from `.tar` to `.tar.gz`.
-  - Status: pending
-  - Files: `src/lib/FriscyMachine.ts`
-
-- [ ] **Phase 2C: scheduler.yield() in poll loop** — Replace `setInterval` with `requestAnimationFrame` + `scheduler.yield()`. Terminal output = `"user-blocking"`, stats = `"background"`. Feature-detect.
-  - Status: pending
-  - Files: `src/lib/FriscyMachine.ts`
-
-- [ ] **Phase 2D: Compute Pressure observer** — `PressureObserver` on `'cpu'` at 1000ms. On `"serious"`/`"critical"`: reduce instructions-per-batch. Feature-detect.
-  - Status: pending
-  - Files: `src/lib/FriscyMachine.ts`, `src/workers/emulator.worker.ts`
-
-- [ ] **Phase 3A: FileSystemObserver on mounted folders** — After `mount_local`, create `FileSystemObserver` on directory handle. Notify worker on changes. Toast UI. Feature-detect.
-  - Status: pending
-  - Files: `src/lib/FriscyMachine.ts` or `src/App.tsx`
-
-- [ ] **Phase 3B: Keyboard Lock for terminal** — On focus: `navigator.keyboard.lock([...keys])`. On blur: unlock. Feature-detect.
-  - Status: pending
-  - Files: `src/components/TerminalView.tsx`
-
-- [ ] **Phase 3C: Document PiP for terminal** — `documentPictureInPicture.requestWindow()`. Create fresh xterm.js in PiP, copy scrollback, wire stdin/stdout. Fallback to `window.open()`.
-  - Status: pending
-  - Files: `src/components/TerminalView.tsx`
-
-- [ ] **Phase 4: Browser API sweep** — Document-Isolation-Policy header, JSPI growable stacks check, Window Controls Overlay status bar, View Transitions, Navigation API, Local Font Access, EyeDropper, Storage Buckets. See TODAY.md Phase 4A-4H.
-  - Status: pending
-  - Files: various (see TODAY.md)
+- Phase 2A-bis: Freehold integration (needs more research on maceip/freehold client API)
+- Phase 3A: FileSystemObserver (Chrome 133+, nice-to-have)
+- Phase 3C: Document PiP for terminal (complex xterm.js migration)
+- Phase 4B-4G: Window Controls Overlay, View Transitions, Navigation API, Local Font Access, EyeDropper (polish)

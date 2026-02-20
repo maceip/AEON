@@ -172,10 +172,6 @@ async function exportVFS() {
     }
 }
 
-async function saveToOPFS() {
-    await exportVFS();
-}
-
 async function runResumeLoop() {
     if (!emModule) return;
     const friscy_stopped = emModule._friscy_stopped;
@@ -357,21 +353,8 @@ ctx.onmessage = async (e: MessageEvent<WorkerMessage>) => {
 
     if (msg.type === 'run' && emModule) {
         try {
-            let rootfs = msg.rootfsData ? new Uint8Array(msg.rootfsData) : null;
-            
-            // Try to restore from OPFS first
-            try {
-                const root = await navigator.storage.getDirectory();
-                const fileHandle = await root.getFileHandle('persisted_rootfs.tar');
-                const file = await fileHandle.getFile();
-                const buf = await file.arrayBuffer();
-                rootfs = new Uint8Array(buf);
-                console.log(`[worker] Restored VFS from OPFS (${rootfs.length} bytes)`);
-            } catch (e) {
-                // Not found or failed, use provided default
-                console.log('[worker] No persisted VFS found in OPFS, using default');
-            }
-
+            // Main thread handles overlay merge — rootfs arrives ready to use
+            const rootfs = msg.rootfsData ? new Uint8Array(msg.rootfsData) : null;
             if (rootfs) emModule.FS.writeFile('/rootfs.tar', rootfs);
             await emModule.callMain(msg.args || []);
             if (emModule._friscy_stopped && emModule._friscy_stopped()) await runResumeLoop();
@@ -391,10 +374,6 @@ ctx.onmessage = async (e: MessageEvent<WorkerMessage>) => {
 
     if (msg.type === 'write_file' && emModule) {
         try { emModule.FS.writeFile(msg.path, new Uint8Array(msg.data)); } catch (e: any) { console.error(`[worker] Failed to write file ${msg.path}:`, e.message); }
-    }
-
-    if (msg.type === 'load_overlay' && emModule) {
-        try { emModule.FS.writeFile('/tmp/overlay.tar', new Uint8Array(msg.data)); } catch (e: any) { console.error('[worker] Failed to load overlay:', e.message); }
     }
 
     if (msg.type === 'mount_local' && emModule) {

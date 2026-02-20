@@ -721,6 +721,44 @@ export function applyDelta(baseTar, delta) {
 }
 
 // ---------------------------------------------------------------------------
+// Tar merge (union) for package layers
+// ---------------------------------------------------------------------------
+
+/**
+ * Merge two tar archives. Overlay entries win over base entries with the
+ * same path (tar union). Used for stacking package layers onto the rootfs.
+ *
+ * @param {ArrayBuffer|Uint8Array} baseTar    - Base tar archive
+ * @param {ArrayBuffer|Uint8Array} overlayTar - Overlay tar archive (wins on conflicts)
+ * @returns {Uint8Array} - Merged tar archive
+ */
+export function mergeTars(baseTar, overlayTar) {
+    const baseBuf = baseTar instanceof Uint8Array ? baseTar : new Uint8Array(baseTar);
+    const overlayBuf = overlayTar instanceof Uint8Array ? overlayTar : new Uint8Array(overlayTar);
+
+    const baseEntries = parseTar(baseBuf);
+    const overlayEntries = parseTar(overlayBuf);
+
+    if (overlayEntries.length === 0) return baseBuf instanceof Uint8Array ? baseBuf : new Uint8Array(baseBuf);
+
+    const overlayPaths = new Set(overlayEntries.map(e => e.path));
+    const files = [];
+
+    // Base files not overridden by overlay
+    for (const e of baseEntries) {
+        if (!overlayPaths.has(e.path)) {
+            files.push({ path: e.path, content: extractEntry(baseBuf, e), mode: e.mode, mtime: e.mtime });
+        }
+    }
+    // All overlay files (overrides + additions)
+    for (const e of overlayEntries) {
+        files.push({ path: e.path, content: extractEntry(overlayBuf, e), mode: e.mode, mtime: e.mtime });
+    }
+
+    return createTar(files);
+}
+
+// ---------------------------------------------------------------------------
 // Integration helpers
 // ---------------------------------------------------------------------------
 
