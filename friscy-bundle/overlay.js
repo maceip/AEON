@@ -238,6 +238,19 @@ export function createTar(files) {
  * @returns {Promise<FileSystemDirectoryHandle>}
  */
 async function getSessionsRoot() {
+    // Storage Buckets: isolated persistence with explicit eviction policy (Phase 4H)
+    if ('storageBuckets' in navigator) {
+        try {
+            const bucket = await navigator.storageBuckets.open('aeon-rootfs', {
+                persisted: true,
+                durability: 'strict',
+            });
+            const root = await bucket.getDirectory();
+            return root.getDirectoryHandle(SESSIONS_DIR, { create: true });
+        } catch (e) {
+            // Fall back to default OPFS root
+        }
+    }
     const root = await navigator.storage.getDirectory();
     return root.getDirectoryHandle(SESSIONS_DIR, { create: true });
 }

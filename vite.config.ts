@@ -40,6 +40,8 @@ export default defineConfig({
   ],
   server: {
     headers: {
+      // Document-Isolation-Policy (via meta tag in index.html) may replace these
+      // once browser support is broader. Keep COOP/COEP for SharedArrayBuffer.
       'Cross-Origin-Opener-Policy': 'same-origin',
       'Cross-Origin-Embedder-Policy': 'require-corp',
     },

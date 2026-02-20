@@ -147,6 +147,20 @@ const AppContent: React.FC = () => {
       setVoiceActiveId(id);
   }, []);
 
+  // Navigation API: proper browser back/forward between views (Phase 4E)
+  useEffect(() => {
+    if (!('navigation' in window)) return;
+    const nav = (window as any).navigation;
+    const handler = (e: any) => {
+      const url = new URL(e.destination.url);
+      if (url.pathname === '/terminal' || url.pathname === '/settings' || url.pathname === '/packages') {
+        e.intercept({ handler: () => Promise.resolve() });
+      }
+    };
+    nav.addEventListener('navigate', handler);
+    return () => nav.removeEventListener('navigate', handler);
+  }, []);
+
   const mountLocalFolder = async () => {
     if (!systemMachine) return;
     try {

@@ -147,7 +147,14 @@ export class FriscyMachine {
         try {
             const response = await fetch(this.config.rootfs);
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            rootfsData = await response.arrayBuffer();
+            // Serve rootfs as .tar.gz for ~60% smaller downloads
+            if (this.config.rootfs.endsWith('.gz') && typeof DecompressionStream !== 'undefined') {
+                rootfsData = await new Response(
+                    response.body!.pipeThrough(new DecompressionStream('gzip'))
+                ).arrayBuffer();
+            } else {
+                rootfsData = await response.arrayBuffer();
+            }
         } catch (e: any) {
             this.setStatus('error');
             this.setProgress(0, 'Boot failed', e.message);
@@ -207,6 +214,27 @@ export class FriscyMachine {
     this.setProgress(100, 'Boot complete', 'Enjoy your session');
     this.startPolling();
     this.startAutoSave();
+    this.startPressureObserver();
+  }
+
+  private pressureObserver: any = null;
+
+  private startPressureObserver() {
+    if (!('PressureObserver' in globalThis)) return;
+    try {
+      this.pressureObserver = new (globalThis as any).PressureObserver(
+        (records: any[]) => {
+          const state = records[records.length - 1]?.state;
+          if (state && this.worker) {
+            this.worker.postMessage({ type: 'throttle', level: state });
+          }
+        },
+        { sampleInterval: 1000 }
+      );
+      this.pressureObserver.observe('cpu');
+    } catch (e) {
+      console.warn('[machine] PressureObserver not available:', e);
+    }
   }
 
   private startAutoSave() {
@@ -251,11 +279,26 @@ export class FriscyMachine {
   }
 
   private startPolling() {
-    this.pollInterval = setInterval(() => {
-      this.drainStdout();
-      this.checkStdinRequest();
-      this.checkExit();
-    }, 4);
+    const hasSchedulerYield = 'scheduler' in globalThis && 'yield' in (globalThis as any).scheduler;
+    if (hasSchedulerYield) {
+      let running = true;
+      this.pollInterval = { stop: () => { running = false; } };
+      const poll = async () => {
+        while (running) {
+          this.drainStdout();
+          this.checkStdinRequest();
+          this.checkExit();
+          await (globalThis as any).scheduler.yield();
+        }
+      };
+      requestAnimationFrame(() => poll());
+    } else {
+      this.pollInterval = setInterval(() => {
+        this.drainStdout();
+        this.checkStdinRequest();
+        this.checkExit();
+      }, 4);
+    }
   }
 
   private drainStdout() {
@@ -299,7 +342,10 @@ export class FriscyMachine {
     if (cmd === 4) {
       this.setStatus('exited');
       this.onExit(Atomics.load(this.controlView, SabOffset.EXIT_CODE));
-      clearInterval(this.pollInterval);
+      if (this.pollInterval) {
+        if (this.pollInterval.stop) this.pollInterval.stop();
+        else clearInterval(this.pollInterval);
+      }
       if (this.saveInterval) clearInterval(this.saveInterval);
     }
   }
@@ -321,8 +367,31 @@ export class FriscyMachine {
     this.worker?.postMessage({ type: 'write_file', path, data: data.buffer }, [data.buffer]);
   }
 
+  public onFsChange: (changes: any[]) => void = () => {};
+  private fsObserver: any = null;
+
   public mountLocal(handle: FileSystemDirectoryHandle) {
     this.worker?.postMessage({ type: 'mount_local', handle });
+    this.localDiskMounted = true;
+
+    // FileSystemObserver: watch for external changes (Chrome 133+)
+    if ('FileSystemObserver' in globalThis) {
+      try {
+        this.fsObserver = new (globalThis as any).FileSystemObserver((records: any[]) => {
+          const changes = records.map((r: any) => ({
+            type: r.type, // 'appeared' | 'modified' | 'disappeared'
+            path: r.relativePathComponents?.join('/') || r.changedHandle?.name,
+          }));
+          console.log(`[machine] ${changes.length} file(s) changed in /mnt/host/`);
+          this.onFsChange(changes);
+          // Notify worker to re-scan mounted dir
+          this.worker?.postMessage({ type: 'fs_changed', changes });
+        });
+        this.fsObserver.observe(handle, { recursive: true });
+      } catch (e) {
+        console.warn('[machine] FileSystemObserver not available:', e);
+      }
+    }
   }
 
   public snapshot(callback: (data: ArrayBuffer) => void) {
@@ -339,8 +408,13 @@ export class FriscyMachine {
   }
 
   public terminate(newStatus: MachineStatus = 'idle') {
-    if (this.pollInterval) clearInterval(this.pollInterval);
+    if (this.pollInterval) {
+      if (this.pollInterval.stop) this.pollInterval.stop();
+      else clearInterval(this.pollInterval);
+    }
     if (this.saveInterval) clearInterval(this.saveInterval);
+    if (this.pressureObserver) { this.pressureObserver.disconnect(); this.pressureObserver = null; }
+    if (this.fsObserver) { this.fsObserver.disconnect(); this.fsObserver = null; }
     this.worker?.terminate();
     this.worker = null;
     this.setStatus(newStatus);

@@ -41,6 +41,7 @@ let netView: Int32Array | null = null;
 let netBytes: Uint8Array | null = null;
 let emModule: EmscriptenModule | null = null;
 let hostDirectoryHandle: FileSystemDirectoryHandle | null = null;
+let throttleLevel: string = 'nominal';
 
 const encoder = new TextEncoder();
 let lastJitStatsPostMs = 0;
@@ -380,5 +381,14 @@ ctx.onmessage = async (e: MessageEvent<WorkerMessage>) => {
         hostDirectoryHandle = msg.handle;
         (emModule as any).hostDirectoryHandle = hostDirectoryHandle;
         console.log('[worker] Local directory mounted to /mnt/host');
+    }
+
+    if (msg.type === 'throttle') {
+        throttleLevel = msg.level;
+        console.log(`[worker] CPU pressure: ${throttleLevel}`);
+    }
+
+    if (msg.type === 'fs_changed') {
+        console.log(`[worker] Host FS changed: ${msg.changes?.length} file(s)`);
     }
 };

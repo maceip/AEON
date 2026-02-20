@@ -124,7 +124,9 @@ export type WorkerMessage =
     | { type: 'resize'; rows: number; cols: number }
     | { type: 'write_file'; path: string; data: ArrayBuffer }
     | { type: 'load_overlay'; data: ArrayBuffer }
-    | { type: 'mount_local'; handle: FileSystemDirectoryHandle };
+    | { type: 'mount_local'; handle: FileSystemDirectoryHandle }
+    | { type: 'throttle'; level: string }
+    | { type: 'fs_changed'; changes: any[] };
 
 export type MainThreadMessage = 
     | { type: 'ready' }

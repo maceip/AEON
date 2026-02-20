@@ -9,7 +9,7 @@ import { FriscyMachine } from '../lib/FriscyMachine';
 import { unzipSync, gunzipSync } from 'fflate';
 // @ts-ignore
 import { parseTar } from '../../friscy-bundle/overlay.js';
-import { Mic, MicOff } from 'lucide-react';
+import { Mic, MicOff, ExternalLink } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useASR } from '../hooks/useASR';
 import { SquigglySpinner } from './ProgressOverlay';
@@ -219,23 +219,94 @@ export const TerminalView: React.FC<TerminalViewProps> = ({ machine, active, voi
         }
     };
     el?.addEventListener('dragover', handleDragOver); el?.addEventListener('dragleave', handleDragLeave); el?.addEventListener('drop', handleDrop);
-    const handleResize = () => { 
+    const handleResize = () => {
         try {
             if (term.element && term.element.getBoundingClientRect().width > 0) {
-                fitAddon.fit(); 
-                machine.resize(term.cols, term.rows); 
+                fitAddon.fit();
+                machine.resize(term.cols, term.rows);
             }
         } catch (e) {}
     };
     window.addEventListener('resize', handleResize);
     setTimeout(handleResize, 100);
+
+    // Keyboard Lock: capture Escape + F-keys when terminal is focused (Phase 3B)
+    const hasKeyboardLock = 'keyboard' in navigator && 'lock' in (navigator as any).keyboard;
+    const handleFocus = () => {
+      if (hasKeyboardLock) {
+        (navigator as any).keyboard.lock(['Escape','F1','F2','F3','F4','F5','F6','F7','F8','F9','F10','F11','F12']).catch(() => {});
+      }
+    };
+    const handleBlur = () => {
+      if (hasKeyboardLock) {
+        (navigator as any).keyboard.unlock();
+      }
+    };
+    el?.addEventListener('focusin', handleFocus);
+    el?.addEventListener('focusout', handleBlur);
+
     return () => {
       window.removeEventListener('resize', handleResize);
       el?.removeEventListener('dragover', handleDragOver); el?.removeEventListener('dragleave', handleDragLeave); el?.removeEventListener('drop', handleDrop);
+      el?.removeEventListener('focusin', handleFocus); el?.removeEventListener('focusout', handleBlur);
+      if (hasKeyboardLock) (navigator as any).keyboard.unlock();
       clearInterval(scrollbackTimer);
       flushScrollback();
       term.dispose();
     };
+  }, [machine, theme]);
+
+  const popOutTerminal = useCallback(async () => {
+    if (!xtermRef.current) return;
+    const hasPiP = 'documentPictureInPicture' in window;
+    if (hasPiP) {
+      try {
+        const pipWindow = await (window as any).documentPictureInPicture.requestWindow({
+          width: 800, height: 500,
+        });
+        // Copy stylesheets
+        [...document.styleSheets].forEach((ss) => {
+          try {
+            const newStyle = pipWindow.document.createElement('style');
+            [...ss.cssRules].forEach((rule) => { newStyle.textContent += rule.cssText; });
+            pipWindow.document.head.appendChild(newStyle);
+          } catch { /* cross-origin stylesheet, skip */ }
+        });
+        const container = pipWindow.document.createElement('div');
+        container.style.cssText = 'width:100%;height:100%;background:#0a0e14;';
+        pipWindow.document.body.style.margin = '0';
+        pipWindow.document.body.appendChild(container);
+
+        const pipTerm = new Terminal({
+          theme: theme === 'dark' ? DARK_THEME : LIGHT_THEME,
+          fontFamily: '"Maple Mono", monospace', fontSize: 14,
+          cursorBlink: true, convertEol: true,
+        });
+        const pipFit = new FitAddon();
+        pipTerm.loadAddon(pipFit);
+        pipTerm.open(container);
+        pipFit.fit();
+        // Copy scrollback
+        const buf = xtermRef.current.buffer.active;
+        for (let i = 0; i < buf.length; i++) {
+          const line = buf.getLine(i);
+          if (line) pipTerm.write(line.translateToString(true) + '\r\n');
+        }
+        // Wire I/O
+        pipTerm.onData((data) => machine.writeStdin(data));
+        const origStdout = machine.onStdout;
+        machine.onStdout = (text) => { origStdout(text); pipTerm.write(text); };
+        pipWindow.addEventListener('pagehide', () => {
+          machine.onStdout = origStdout;
+          pipTerm.dispose();
+        });
+        return;
+      } catch (e) {
+        console.warn('[pip] PiP failed, falling back to window.open:', e);
+      }
+    }
+    // Fallback: window.open
+    window.open(window.location.href, '_blank', 'width=800,height=500');
   }, [machine, theme]);
 
   const toggleMic = async () => {
@@ -259,6 +330,13 @@ export const TerminalView: React.FC<TerminalViewProps> = ({ machine, active, voi
       data-testid="terminal-container"
       className={`w-full h-full p-2 bg-[var(--bg-app)] border border-[var(--border-subtle)] rounded-lg shadow-inner overflow-hidden relative ${active ? 'block' : 'hidden'}`}>
       <div ref={terminalRef} className="w-full h-full" />
+      <button
+        onClick={popOutTerminal}
+        title="Pop out terminal"
+        className="absolute bottom-4 right-14 p-1.5 rounded-full border shadow-lg z-30 bg-[var(--bg-frame)] border-[var(--border-subtle)] text-[#59c2ff] hover:brightness-110 transition-all"
+      >
+        <ExternalLink className="w-3.5 h-3.5" />
+      </button>
       <button
         onClick={toggleMic}
         className={`absolute bottom-4 right-4 p-1.5 rounded-full border shadow-lg z-30 transition-all ${

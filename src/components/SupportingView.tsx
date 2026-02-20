@@ -26,21 +26,18 @@ export const SupportingView: React.FC<SupportingViewProps> = ({ activeApp }) => 
     // Handle App transitions with "Hidden Door" rotation and "Jedi Doors"
     useEffect(() => {
         if (activeApp !== prevAppRef.current) {
-            setIsTransitioning(true);
-            
-            // Start rotation
-            setRotation(prev => prev + 180);
-
-            // Halfway through rotation, swap the app
-            setTimeout(() => {
-                setDisplayApp(activeApp);
-                prevAppRef.current = activeApp;
-            }, 400);
-
-            // End transition
-            setTimeout(() => {
-                setIsTransitioning(false);
-            }, 800);
+            const doSwap = () => {
+                setIsTransitioning(true);
+                setRotation(prev => prev + 180);
+                setTimeout(() => { setDisplayApp(activeApp); prevAppRef.current = activeApp; }, 400);
+                setTimeout(() => { setIsTransitioning(false); }, 800);
+            };
+            // View Transitions API: smooth animated panel switches (Phase 4D)
+            if ('startViewTransition' in document) {
+                (document as any).startViewTransition(doSwap);
+            } else {
+                doSwap();
+            }
         }
     }, [activeApp]);
 
