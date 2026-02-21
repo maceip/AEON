@@ -4,41 +4,44 @@ import webbundle from 'rollup-plugin-webbundle';
 import { VitePWA } from 'vite-plugin-pwa';
 
 // https://vitejs.dev/config/
-export default defineConfig({
-  plugins: [
-    react(),
-    VitePWA({
-      registerType: 'autoUpdate',
-      injectRegister: 'inline', // Inline the registration to ensure it runs immediately
-      manifest: false, // We point to it in index.html as .well-known/manifest.json
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,wasm,svg,jpg,png}'],
-        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB - needed for bundled Three.js + onnxruntime
-        cleanupOutdatedCaches: true, // Force cleanup of old versions
-        clientsClaim: true,
-        skipWaiting: true,
-        runtimeCaching: [
-          {
-            urlPattern: ({ request }) => request.mode === 'navigate',
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'nav-cache',
-              expiration: { maxEntries: 1 }, // Reduce entries to prevent stale state
-              networkTimeoutSeconds: 3,
+export default defineConfig(({ mode }) => {
+  const isBundle = mode === 'bundle';
+
+  return {
+    plugins: [
+      react(),
+      VitePWA({
+        registerType: 'autoUpdate',
+        injectRegister: 'inline', // Inline the registration to ensure it runs immediately
+        manifest: false, // We point to it in index.html as .well-known/manifest.json
+        workbox: {
+          globPatterns: ['**/*.{js,css,html,wasm,svg,jpg,png}'],
+          maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB - needed for bundled Three.js + onnxruntime
+          cleanupOutdatedCaches: true, // Force cleanup of old versions
+          clientsClaim: true,
+          skipWaiting: true,
+          runtimeCaching: [
+            {
+              urlPattern: ({ request }) => request.mode === 'navigate',
+              handler: 'NetworkFirst',
+              options: {
+                cacheName: 'nav-cache',
+                expiration: { maxEntries: 1 }, // Reduce entries to prevent stale state
+                networkTimeoutSeconds: 3,
+              }
             }
-          }
-        ]
-      }
-    }),
-    /*
-    webbundle({
-        baseURL: 'https://friscy.dev/',
-        primaryURL: 'https://friscy.dev/',
+          ]
+        }
+      }),
+      isBundle && webbundle({
+        baseURL: 'isolated-app://friscy-dev/',
         output: 'friscy.wbn',
-    })
-    */
-  ],
-  server: {
+        static: {
+          dir: 'dist',
+        },
+      })
+    ].filter(Boolean),
+    server: {
     headers: {
       // Document-Isolation-Policy (via meta tag in index.html) may replace these
       // once browser support is broader. Keep COOP/COEP for SharedArrayBuffer.
@@ -56,10 +59,11 @@ export default defineConfig({
     exclude: ['@xterm/xterm'],
     entries: ['index.html'],
   },
-  build: {
-    target: 'esnext',
-    assetsInlineLimit: 0,
-    sourcemap: false,
-    minify: 'terser', // Ensure high-fidelity minification
-  }
-});
+      build: {
+        target: 'esnext',
+        assetsInlineLimit: 0,
+        sourcemap: false,
+        minify: 'terser', // Ensure high-fidelity minification
+      }
+    };
+  });

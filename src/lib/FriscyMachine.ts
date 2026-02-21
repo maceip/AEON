@@ -199,7 +199,7 @@ export class FriscyMachine {
         this.sessionId = session.sessionId;
         console.log(`[machine] Session: ${this.sessionId}`);
 
-        const overlayData = await loadOverlay(this.config.id);
+        const overlayData = await loadOverlay(this.sessionId);
         if (overlayData) {
             const delta = JSON.parse(new TextDecoder().decode(new Uint8Array(overlayData)));
             const merged = applyDelta(this.baseTar, delta);

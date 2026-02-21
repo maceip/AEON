@@ -55,10 +55,13 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
       - run: npm ci
-      - run: npx vite build
+      - name: Build Web & Bundle
+        run: npm run build:bundle
+        env:
+          IWA_SIGNING_KEY: ${{ secrets.IWA_SIGNING_KEY }}
       - uses: actions/upload-artifact@v4
         with:
           name: dist

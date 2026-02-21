@@ -73,6 +73,8 @@ export const IntroOverlay: React.FC<IntroOverlayProps> = ({ machine, onBoot, typ
                         <div className="space-y-1">
                             <label className="text-[10px] font-black uppercase tracking-[0.3em] text-friscy-blue">Add Parameter</label>
                             <input 
+                                id="env-param-input"
+                                name="env-param"
                                 autoFocus
                                 value={newEnv}
                                 onChange={(e) => setNewEnv(e.target.value)}

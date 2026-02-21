@@ -163,10 +163,12 @@ export const TerminalView: React.FC<TerminalViewProps> = ({ machine, active, voi
       scrollbackDirty = true;
       if (term.element) {
           const core = (term as any)._core;
-          if (core && core._renderService && core._renderService.dimensions) {
+          if (core && core.buffer && core._renderService && core._renderService.dimensions) {
               const charWidth = core._renderService.dimensions.actualCellWidth;
               const charHeight = core._renderService.dimensions.actualCellHeight;
-              setCursorPos({ top: core.buffer.y * charHeight, left: core.buffer.x * charWidth });
+              if (charWidth && charHeight) {
+                setCursorPos({ top: core.buffer.y * charHeight, left: core.buffer.x * charWidth });
+              }
           }
       }
     };

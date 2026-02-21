@@ -91,6 +91,8 @@ export const FuturisticNotepad: React.FC = () => {
                 {(viewMode === 'edit' || viewMode === 'split') && (
                     <div className="flex-1 p-6 relative bg-black/10">
                         <textarea 
+                            id="neural-log-editor"
+                            name="neural-log"
                             className="w-full h-full bg-transparent border-none outline-none resize-none text-xs font-mono text-gray-400 placeholder:text-gray-800 leading-relaxed custom-scrollbar"
                             placeholder="Neural log initiated... begin session notes here."
                             value={note}

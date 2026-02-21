@@ -133,7 +133,6 @@ const CarouselIcon = ({ index, total, label, color, type, scrollRef, velocityRef
         position={[0, -1.0, 0]}
         fontSize={0.12}
         color="#59c2ff"
-        font="https://cdn.jsdelivr.net/fontsource/fonts/maple-mono@latest/latin-400-normal.woff2"
         anchorX="center"
         anchorY="middle"
         outlineWidth={0.005}
