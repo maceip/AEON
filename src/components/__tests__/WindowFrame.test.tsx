@@ -57,4 +57,11 @@ describe('WindowFrame', () => {
     const content = screen.getByText('HiddenContent');
     expect(content.parentElement).toHaveClass('hidden');
   });
+
+  it('has accessible labels on buttons', () => {
+    render(<WindowFrame {...props}><div>Content</div></WindowFrame>);
+    expect(screen.getByLabelText('Minimize')).toBeTruthy();
+    expect(screen.getByLabelText('Maximize')).toBeTruthy();
+    expect(screen.getByLabelText('Close')).toBeTruthy();
+  });
 });
