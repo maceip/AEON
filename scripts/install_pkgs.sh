@@ -26,6 +26,7 @@ if ! command -v docker &> /dev/null; then
     $SUDO chmod a+r /etc/apt/keyrings/docker.gpg
 
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+# shellcheck disable=SC1091
     $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | $SUDO tee /etc/apt/sources.list.d/docker.list > /dev/null
 
     $SUDO apt-get update
@@ -39,6 +40,7 @@ fi
 # Required for the rv2wasm AOT compiler
 if ! command -v cargo &> /dev/null; then
     echo "Installing Rust toolchain..."
+# shellcheck disable=SC1091
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
     source "$HOME/.cargo/env"
 fi
@@ -53,6 +55,7 @@ if ! command -v go &> /dev/null; then
     rm "go${GO_VER}.linux-amd64.tar.gz"
     
     # Update PATH for current session and bashrc
+# shellcheck disable=SC2016
     export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin
     if ! grep -q "/usr/local/go/bin" "$HOME/.bashrc"; then
         echo 'export PATH=$PATH:/usr/local/go/bin:$HOME/go/bin' >> "$HOME/.bashrc"

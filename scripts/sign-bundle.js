@@ -31,6 +31,8 @@ async function sign() {
     }
 
     console.log('Signing Web Bundle...');
+    try {
+        const bundle = fs.readFileSync(wbnPath);
         const webBundleId = new wbnSign.WebBundleId(privateKey);
         
         // Use wbnSign to add integrity block
