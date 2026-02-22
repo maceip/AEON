@@ -45,8 +45,8 @@ while IFS= read -r path; do
     [[ "$path" != */* ]] && continue
     if [[ ! -e "$REPO_ROOT/$path" ]]; then
         fail "ARCHITECTURE.md references '$path' but it does not exist"
+    # shellcheck disable=SC2016
     fi
-# shellcheck disable=SC2016
 done < <(grep -oP '`[a-zA-Z][a-zA-Z0-9_/.\-]+\.(ts|tsx|js|hpp|cpp|rs|toml|json|html|css|wasm|txt|md|yml|ckpt|sh)`' "$REPO_ROOT/ARCHITECTURE.md" 2>/dev/null | tr -d '`' | sort -u)
 
 # -----------------------------------------------------------------------
@@ -79,10 +79,10 @@ while IFS= read -r path; do
     # Skip bare names without directory separator
     [[ "$path" != */* ]] && continue
     trimmed="${path%/}"
+    # shellcheck disable=SC2016
     if [[ ! -e "$REPO_ROOT/$trimmed" ]]; then
         fail "AGENTS.md references '$path' but it does not exist"
 # shellcheck disable=SC2016
-    fi
 done < <(sed -n '/## Code Layout/,/^## /p' "$REPO_ROOT/AGENTS.md" | grep -oP '`[a-zA-Z][a-zA-Z0-9_/.\-]+/?`' | tr -d '`' | sort -u)
 
 # -----------------------------------------------------------------------
@@ -159,12 +159,12 @@ done < <(find "$REPO_ROOT/docs" -name '*.md' -type f 2>/dev/null)
 echo "=== Checking README.md directory tree ==="
 # Only check top-level dirs (lines starting with ├── or └── at column 0-1 in the tree)
 while IFS= read -r dir; do
+    # shellcheck disable=SC2016
     dir="${dir%/}"
     [[ -z "$dir" ]] && continue
     if [[ ! -d "$REPO_ROOT/$dir" ]]; then
 # shellcheck disable=SC2016
         fail "README.md directory tree lists '$dir/' but it does not exist"
-    fi
 done < <(sed -n '/^```$/,/^```$/p' "$REPO_ROOT/README.md" | grep -P '^[├└]' | grep -oP '(?:├──|└──)\s+(\S+?)/' | sed 's/[├└── ]//g' | tr -d '/' | sort -u)
 
 # -----------------------------------------------------------------------
