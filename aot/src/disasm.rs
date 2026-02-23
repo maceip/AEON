@@ -28,6 +28,7 @@ pub struct Instruction {
 
 /// RISC-V opcodes (RV64GC subset)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[allow(non_camel_case_types)]
 pub enum Opcode {
     // RV32I Base
     LUI,
@@ -295,8 +296,7 @@ pub fn disassemble(section: &CodeSection) -> Result<Vec<Instruction>> {
             if offset + 2 > section.data.len() {
                 break;
             }
-            let bytes =
-                (section.data[offset] as u32) | ((section.data[offset + 1] as u32) << 8);
+            let bytes = (section.data[offset] as u32) | ((section.data[offset + 1] as u32) << 8);
 
             let inst = decode_compressed(addr, bytes);
             instructions.push(inst);

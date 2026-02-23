@@ -27,6 +27,8 @@ describe('WindowFrame', () => {
     onMaximize: vi.fn(),
     onRestore: vi.fn(),
     onShare: vi.fn(),
+    onPopout: vi.fn(),
+    onTogglePause: vi.fn(),
     isMaximized: false,
     isMinimized: false,
   };
@@ -39,16 +41,37 @@ describe('WindowFrame', () => {
 
   it('calls minimize when button clicked', () => {
     render(<WindowFrame {...props}><div>Content</div></WindowFrame>);
-    const minBtn = screen.getByTitle('Minimize');
+    const minBtn = screen.getByRole('button', { name: /minimize/i });
     fireEvent.click(minBtn);
     expect(props.onMinimize).toHaveBeenCalled();
   });
 
   it('calls maximize when button clicked', () => {
     render(<WindowFrame {...props}><div>Content</div></WindowFrame>);
-    const maxBtn = screen.getByTitle('Maximize');
+    const maxBtn = screen.getByRole('button', { name: /maximize/i });
     fireEvent.click(maxBtn);
     expect(props.onMaximize).toHaveBeenCalled();
+  });
+
+  it('calls close when button clicked', () => {
+    render(<WindowFrame {...props}><div>Content</div></WindowFrame>);
+    const closeBtn = screen.getByRole('button', { name: /close/i });
+    fireEvent.click(closeBtn);
+    expect(props.onClose).toHaveBeenCalled();
+  });
+
+  it('calls restore when button clicked', () => {
+    render(<WindowFrame {...props}><div>Content</div></WindowFrame>);
+    const restoreBtn = screen.getByRole('button', { name: /restore window/i });
+    fireEvent.click(restoreBtn);
+    expect(props.onRestore).toHaveBeenCalled();
+  });
+
+  it('calls popout when button clicked', () => {
+    render(<WindowFrame {...props}><div>Content</div></WindowFrame>);
+    const popoutBtn = screen.getByRole('button', { name: /pop out/i });
+    fireEvent.click(popoutBtn);
+    expect(props.onPopout).toHaveBeenCalled();
   });
 
   it('hides content when minimized', () => {
