@@ -46,7 +46,8 @@ while IFS= read -r path; do
     if [[ ! -e "$REPO_ROOT/$path" ]]; then
         fail "ARCHITECTURE.md references '$path' but it does not exist"
     fi
-done < <(grep -oP '`[a-zA-Z][a-zA-Z0-9_/.\-]+\.(ts|tsx|js|hpp|cpp|rs|toml|json|html|css|wasm|txt|md|yml|ckpt|sh)`' "$REPO_ROOT/ARCHITECTURE.md" 2>/dev/null | tr -d '`' | sort -u) # shellcheck disable=SC2016
+    # shellcheck disable=SC2016
+done < <(grep -oP '`[a-zA-Z][a-zA-Z0-9_/.\-]+\.(ts|tsx|js|hpp|cpp|rs|toml|json|html|css|wasm|txt|md|yml|ckpt|sh)`' "$REPO_ROOT/ARCHITECTURE.md" 2>/dev/null | tr -d '`' | sort -u)
 
 # -----------------------------------------------------------------------
 # 4. ARCHITECTURE.md must mention key components
@@ -81,7 +82,8 @@ while IFS= read -r path; do
     if [[ ! -e "$REPO_ROOT/$trimmed" ]]; then
         fail "AGENTS.md references '$path' but it does not exist"
     fi
-done < <(sed -n '/## Code Layout/,/^## /p' "$REPO_ROOT/AGENTS.md" | grep -oP '`[a-zA-Z][a-zA-Z0-9_/.\-]+/?`' | tr -d '`' | sort -u) # shellcheck disable=SC2016
+    # shellcheck disable=SC2016
+done < <(sed -n '/## Code Layout/,/^## /p' "$REPO_ROOT/AGENTS.md" | grep -oP '`[a-zA-Z][a-zA-Z0-9_/.\-]+/?`' | tr -d '`' | sort -u)
 
 # -----------------------------------------------------------------------
 # 6. Key source exports match documentation claims
@@ -162,7 +164,8 @@ while IFS= read -r dir; do
     if [[ ! -d "$REPO_ROOT/$dir" ]]; then
         fail "README.md directory tree lists '$dir/' but it does not exist"
     fi
-done < <(sed -n '/^```$/,/^```$/p' "$REPO_ROOT/README.md" | grep -P '^[├└]' | grep -oP '(?:├──|└──)\s+(\S+?)/' | sed 's/[├└── ]//g' | tr -d '/' | sort -u) # shellcheck disable=SC2016
+    # shellcheck disable=SC2016
+done < <(sed -n '/^```$/,/^```$/p' "$REPO_ROOT/README.md" | grep -P '^[├└]' | grep -oP '(?:├──|└──)\s+(\S+?)/' | sed 's/[├└── ]//g' | tr -d '/' | sort -u)
 
 # -----------------------------------------------------------------------
 # 10. Freshness (warn only)

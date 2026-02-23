@@ -249,6 +249,7 @@ pub fn translate(
         .map(|s| s.vaddr + s.memsz)
         .max()
         .unwrap_or(0);
+    #[allow(clippy::manual_div_ceil)]
     let memory_pages = ((max_addr + 0xFFFF) / 0x10000) as u32;
 
     // Collect all block addresses for inline caching
@@ -2907,6 +2908,7 @@ fn cache_gpr_i64_values(body: Vec<WasmInst>, next_local: &mut u32) -> (Vec<WasmI
         matches!(inst, WasmInst::LocalGet { idx: i } if *i == idx)
     }
 
+    #[allow(clippy::manual_is_multiple_of)]
     fn is_cacheable_gpr_offset(offset: u32) -> bool {
         // x0 uses offset 0 and appears frequently in non-register-memory contexts.
         // Restrict caching to x1..x31 offsets to avoid accidental overlap with
