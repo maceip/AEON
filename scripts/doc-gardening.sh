@@ -67,8 +67,7 @@ for doc in "$REPO_ROOT/ARCHITECTURE.md" "$REPO_ROOT/AGENTS.md"; do
         if [[ ! -e "$REPO_ROOT/$trimmed" ]]; then
             add_problem "**Drift**: \`$doc_name\` references \`$path\` which no longer exists"
         fi
-    # shellcheck disable=SC2016
-    done < <(grep -oP '`[a-zA-Z][a-zA-Z0-9_/.\-]+\.(ts|tsx|js|hpp|cpp|rs|toml|json|html|sh)`' "$doc" 2>/dev/null | tr -d '`' | sort -u)
+    done < <(grep -oP '`[a-zA-Z][a-zA-Z0-9_/.\-]+\.(ts|tsx|js|hpp|cpp|rs|toml|json|html|sh)`' "$doc" 2>/dev/null | tr -d '`' | sort -u) # shellcheck disable=SC2016
 done
 
 # -----------------------------------------------------------------------
