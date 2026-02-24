@@ -46,7 +46,7 @@ fn compile_region_inner(
     base_addr: u32,
     tier: JitCompileTier,
 ) -> anyhow::Result<Vec<u8>> {
-    use rv2wasm::{disasm, cfg, translate, wasm_builder};
+    use rv2wasm::{cfg, disasm, translate, wasm_builder};
 
     // Create a CodeSection from the raw bytes
     let section = rv2wasm::CodeSection {
