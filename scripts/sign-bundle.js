@@ -30,7 +30,9 @@ async function sign() {
         console.log('Development key saved to', keyPath, '(DO NOT COMMIT THIS)');
     }
 
-    console.log('Signing Web Bundle...');
+    try {
+        console.log('Signing Web Bundle...');
+        const bundle = fs.readFileSync(wbnPath);
         const webBundleId = new wbnSign.WebBundleId(privateKey);
         
         // Use wbnSign to add integrity block
