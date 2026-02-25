@@ -9,28 +9,30 @@ async function sign() {
     const keyPath = 'dev-key.pem';
     let privateKey;
 
-    if (!fs.existsSync(wbnPath)) {
-        console.error('Unsigned bundle not found at', wbnPath);
-        process.exit(1);
-    }
+    try {
+        if (!fs.existsSync(wbnPath)) {
+            console.error('Unsigned bundle not found at', wbnPath);
+            process.exit(1);
+        }
 
-    if (process.env.IWA_SIGNING_KEY) {
-        console.log('Using signing key from environment variable...');
-        privateKey = wbnSign.parsePemKey(process.env.IWA_SIGNING_KEY);
-    } else if (fs.existsSync(keyPath)) {
-        console.log('Using signing key from local file:', keyPath);
-        privateKey = wbnSign.parsePemKey(fs.readFileSync(keyPath));
-    } else {
-        console.log('Generating new Ed25519 development key...');
-        const { privateKey: newKey } = crypto.generateKeyPairSync('ed25519', {
-            privateKeyEncoding: { format: 'pem', type: 'pkcs8' }
-        });
-        fs.writeFileSync(keyPath, newKey);
-        privateKey = wbnSign.parsePemKey(newKey);
-        console.log('Development key saved to', keyPath, '(DO NOT COMMIT THIS)');
-    }
+        if (process.env.IWA_SIGNING_KEY) {
+            console.log('Using signing key from environment variable...');
+            privateKey = wbnSign.parsePemKey(process.env.IWA_SIGNING_KEY);
+        } else if (fs.existsSync(keyPath)) {
+            console.log('Using signing key from local file:', keyPath);
+            privateKey = wbnSign.parsePemKey(fs.readFileSync(keyPath));
+        } else {
+            console.log('Generating new Ed25519 development key...');
+            const { privateKey: newKey } = crypto.generateKeyPairSync('ed25519', {
+                privateKeyEncoding: { format: 'pem', type: 'pkcs8' }
+            });
+            fs.writeFileSync(keyPath, newKey);
+            privateKey = wbnSign.parsePemKey(newKey);
+            console.log('Development key saved to', keyPath, '(DO NOT COMMIT THIS)');
+        }
 
-    console.log('Signing Web Bundle...');
+        console.log('Signing Web Bundle...');
+        const bundle = fs.readFileSync(wbnPath);
         const webBundleId = new wbnSign.WebBundleId(privateKey);
         
         // Use wbnSign to add integrity block

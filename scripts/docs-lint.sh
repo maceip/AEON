@@ -35,6 +35,7 @@ done
 # 3. ARCHITECTURE.md file references must exist
 # -----------------------------------------------------------------------
 echo "=== Checking ARCHITECTURE.md file references ==="
+# shellcheck disable=SC2016
 while IFS= read -r path; do
     # Skip wildcards, vendor, large binaries
     [[ "$path" == *'*'* || "$path" == *'{'* ]] && continue
@@ -81,6 +82,7 @@ while IFS= read -r path; do
     if [[ ! -e "$REPO_ROOT/$trimmed" ]]; then
         fail "AGENTS.md references '$path' but it does not exist"
     fi
+    # shellcheck disable=SC2016
 done < <(sed -n '/## Code Layout/,/^## /p' "$REPO_ROOT/AGENTS.md" | grep -oP '`[a-zA-Z][a-zA-Z0-9_/.\-]+/?`' | tr -d '`' | sort -u)
 
 # -----------------------------------------------------------------------
@@ -162,6 +164,7 @@ while IFS= read -r dir; do
     if [[ ! -d "$REPO_ROOT/$dir" ]]; then
         fail "README.md directory tree lists '$dir/' but it does not exist"
     fi
+    # shellcheck disable=SC2016
 done < <(sed -n '/^```$/,/^```$/p' "$REPO_ROOT/README.md" | grep -P '^[├└]' | grep -oP '(?:├──|└──)\s+(\S+?)/' | sed 's/[├└── ]//g' | tr -d '/' | sort -u)
 
 # -----------------------------------------------------------------------
