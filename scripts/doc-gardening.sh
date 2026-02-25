@@ -22,6 +22,7 @@ STALE_DAYS=90
 # 1. Stale documentation files
 # -----------------------------------------------------------------------
 echo "Scanning for stale documentation..."
+# shellcheck disable=SC2016
 while IFS= read -r mdfile; do
     mod_time=$(stat -c %Y "$mdfile" 2>/dev/null || stat -f %m "$mdfile" 2>/dev/null || echo "$NOW")
     age_days=$(( (NOW - mod_time) / 86400 ))
@@ -29,7 +30,6 @@ while IFS= read -r mdfile; do
         rel="${mdfile#"$REPO_ROOT"/}"
         add_problem "**Stale** (\`$age_days\` days): \`$rel\`"
     fi
-    # shellcheck disable=SC2016
 done < <(find "$REPO_ROOT/docs" "$REPO_ROOT/AGENTS.md" "$REPO_ROOT/ARCHITECTURE.md" -name '*.md' -type f 2>/dev/null)
 
 # -----------------------------------------------------------------------

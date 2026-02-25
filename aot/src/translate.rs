@@ -249,7 +249,7 @@ pub fn translate(
         .map(|s| s.vaddr + s.memsz)
         .max()
         .unwrap_or(0);
-    let memory_pages = ((max_addr + 0xFFFF) / 0x10000) as u32;
+    let memory_pages = (max_addr.div_ceil(0x10000)) as u32;
 
     // Collect all block addresses for inline caching
     let block_addrs: Vec<u64> = cfg.blocks.keys().copied().collect();
@@ -1327,7 +1327,7 @@ fn translate_instruction(inst: &Instruction, body: &mut Vec<WasmInst>) -> Result
             let frd_offset = 256 + rd * 4;
             let frs1_offset = 256 + rs1 * 4;
             let frs2_offset = 256 + rs2 * 4;
-            let rs3 = ((inst.bytes >> 27) & 0x1f) as u32;
+            let rs3 = (inst.bytes >> 27) & 0x1f;
             let frs3_offset = 256 + rs3 * 4;
             // rd = rs1 * rs2 + rs3
             body.push(WasmInst::LocalGet { idx: 0 });
@@ -1352,7 +1352,7 @@ fn translate_instruction(inst: &Instruction, body: &mut Vec<WasmInst>) -> Result
             let frd_offset = 256 + rd * 4;
             let frs1_offset = 256 + rs1 * 4;
             let frs2_offset = 256 + rs2 * 4;
-            let rs3 = ((inst.bytes >> 27) & 0x1f) as u32;
+            let rs3 = (inst.bytes >> 27) & 0x1f;
             let frs3_offset = 256 + rs3 * 4;
             // rd = rs1 * rs2 - rs3
             body.push(WasmInst::LocalGet { idx: 0 });
@@ -1377,7 +1377,7 @@ fn translate_instruction(inst: &Instruction, body: &mut Vec<WasmInst>) -> Result
             let frd_offset = 256 + rd * 4;
             let frs1_offset = 256 + rs1 * 4;
             let frs2_offset = 256 + rs2 * 4;
-            let rs3 = ((inst.bytes >> 27) & 0x1f) as u32;
+            let rs3 = (inst.bytes >> 27) & 0x1f;
             let frs3_offset = 256 + rs3 * 4;
             // rd = -(rs1 * rs2) + rs3 = rs3 - rs1*rs2
             body.push(WasmInst::LocalGet { idx: 0 });
@@ -1403,7 +1403,7 @@ fn translate_instruction(inst: &Instruction, body: &mut Vec<WasmInst>) -> Result
             let frd_offset = 256 + rd * 4;
             let frs1_offset = 256 + rs1 * 4;
             let frs2_offset = 256 + rs2 * 4;
-            let rs3 = ((inst.bytes >> 27) & 0x1f) as u32;
+            let rs3 = (inst.bytes >> 27) & 0x1f;
             let frs3_offset = 256 + rs3 * 4;
             // rd = -(rs1 * rs2) - rs3
             body.push(WasmInst::LocalGet { idx: 0 });
@@ -1430,7 +1430,7 @@ fn translate_instruction(inst: &Instruction, body: &mut Vec<WasmInst>) -> Result
             let frd_offset = 384 + rd * 8;
             let frs1_offset = 384 + rs1 * 8;
             let frs2_offset = 384 + rs2 * 8;
-            let rs3 = ((inst.bytes >> 27) & 0x1f) as u32;
+            let rs3 = (inst.bytes >> 27) & 0x1f;
             let frs3_offset = 384 + rs3 * 8;
             body.push(WasmInst::LocalGet { idx: 0 });
             body.push(WasmInst::LocalGet { idx: 0 });
@@ -1454,7 +1454,7 @@ fn translate_instruction(inst: &Instruction, body: &mut Vec<WasmInst>) -> Result
             let frd_offset = 384 + rd * 8;
             let frs1_offset = 384 + rs1 * 8;
             let frs2_offset = 384 + rs2 * 8;
-            let rs3 = ((inst.bytes >> 27) & 0x1f) as u32;
+            let rs3 = (inst.bytes >> 27) & 0x1f;
             let frs3_offset = 384 + rs3 * 8;
             body.push(WasmInst::LocalGet { idx: 0 });
             body.push(WasmInst::LocalGet { idx: 0 });
@@ -1478,7 +1478,7 @@ fn translate_instruction(inst: &Instruction, body: &mut Vec<WasmInst>) -> Result
             let frd_offset = 384 + rd * 8;
             let frs1_offset = 384 + rs1 * 8;
             let frs2_offset = 384 + rs2 * 8;
-            let rs3 = ((inst.bytes >> 27) & 0x1f) as u32;
+            let rs3 = (inst.bytes >> 27) & 0x1f;
             let frs3_offset = 384 + rs3 * 8;
             body.push(WasmInst::LocalGet { idx: 0 });
             body.push(WasmInst::LocalGet { idx: 0 });
@@ -1503,7 +1503,7 @@ fn translate_instruction(inst: &Instruction, body: &mut Vec<WasmInst>) -> Result
             let frd_offset = 384 + rd * 8;
             let frs1_offset = 384 + rs1 * 8;
             let frs2_offset = 384 + rs2 * 8;
-            let rs3 = ((inst.bytes >> 27) & 0x1f) as u32;
+            let rs3 = (inst.bytes >> 27) & 0x1f;
             let frs3_offset = 384 + rs3 * 8;
             body.push(WasmInst::LocalGet { idx: 0 });
             body.push(WasmInst::LocalGet { idx: 0 });
@@ -2911,7 +2911,7 @@ fn cache_gpr_i64_values(body: Vec<WasmInst>, next_local: &mut u32) -> (Vec<WasmI
         // x0 uses offset 0 and appears frequently in non-register-memory contexts.
         // Restrict caching to x1..x31 offsets to avoid accidental overlap with
         // generic offset=0 memory operations.
-        offset != 0 && offset < (32 * 8) && offset % 8 == 0
+        offset != 0 && offset < (32 * 8) && offset.is_multiple_of(8)
     }
 
     fn gpr_cache_range_end() -> u32 {

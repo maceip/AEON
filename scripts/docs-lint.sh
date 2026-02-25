@@ -35,6 +35,7 @@ done
 # 3. ARCHITECTURE.md file references must exist
 # -----------------------------------------------------------------------
 echo "=== Checking ARCHITECTURE.md file references ==="
+# shellcheck disable=SC2016
 while IFS= read -r path; do
     # Skip wildcards, vendor, large binaries
     [[ "$path" == *'*'* || "$path" == *'{'* ]] && continue
@@ -46,7 +47,6 @@ while IFS= read -r path; do
     if [[ ! -e "$REPO_ROOT/$path" ]]; then
         fail "ARCHITECTURE.md references '$path' but it does not exist"
     fi
-    # shellcheck disable=SC2016
 done < <(grep -oP '`[a-zA-Z][a-zA-Z0-9_/.\-]+\.(ts|tsx|js|hpp|cpp|rs|toml|json|html|css|wasm|txt|md|yml|ckpt|sh)`' "$REPO_ROOT/ARCHITECTURE.md" 2>/dev/null | tr -d '`' | sort -u)
 
 # -----------------------------------------------------------------------
