@@ -39,14 +39,14 @@ describe('WindowFrame', () => {
 
   it('calls minimize when button clicked', () => {
     render(<WindowFrame {...props}><div>Content</div></WindowFrame>);
-    const minBtn = screen.getByTitle('Minimize');
+    const minBtn = screen.getByRole('button', { name: /Minimize Window/i });
     fireEvent.click(minBtn);
     expect(props.onMinimize).toHaveBeenCalled();
   });
 
   it('calls maximize when button clicked', () => {
     render(<WindowFrame {...props}><div>Content</div></WindowFrame>);
-    const maxBtn = screen.getByTitle('Maximize');
+    const maxBtn = screen.getByRole('button', { name: /Maximize Window/i });
     fireEvent.click(maxBtn);
     expect(props.onMaximize).toHaveBeenCalled();
   });
