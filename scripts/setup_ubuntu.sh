@@ -13,7 +13,7 @@ sudo apt-get install -y
     docker.io openssl
 
 # 2. Configure Docker (Required for tools/harness.sh)
-sudo usermod -aG docker $USER
+sudo usermod -aG docker "$USER"
 echo "NOTICE: You may need to log out and back in for Docker group changes to take effect."
 
 # 3. Install Node.js 23 (Official NodeSource)

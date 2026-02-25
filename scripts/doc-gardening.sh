@@ -29,6 +29,7 @@ while IFS= read -r mdfile; do
         rel="${mdfile#"$REPO_ROOT"/}"
         add_problem "**Stale** (\`$age_days\` days): \`$rel\`"
     fi
+    # shellcheck disable=SC2016
 done < <(find "$REPO_ROOT/docs" "$REPO_ROOT/AGENTS.md" "$REPO_ROOT/ARCHITECTURE.md" -name '*.md' -type f 2>/dev/null)
 
 # -----------------------------------------------------------------------
@@ -67,6 +68,7 @@ for doc in "$REPO_ROOT/ARCHITECTURE.md" "$REPO_ROOT/AGENTS.md"; do
         if [[ ! -e "$REPO_ROOT/$trimmed" ]]; then
             add_problem "**Drift**: \`$doc_name\` references \`$path\` which no longer exists"
         fi
+        # shellcheck disable=SC2016
     done < <(grep -oP '`[a-zA-Z][a-zA-Z0-9_/.\-]+\.(ts|tsx|js|hpp|cpp|rs|toml|json|html|sh)`' "$doc" 2>/dev/null | tr -d '`' | sort -u)
 done
 
@@ -154,7 +156,7 @@ fi
 
 if [[ -n "${GH_TOKEN:-}" ]] && command -v gh &>/dev/null; then
     DATE=$(date -u +%Y-%m-%d)
-    BRANCH="doc-gardening/$DATE"
+    _BRANCH="doc-gardening/$DATE"
 
     BODY="## Doc Gardening Report ($DATE)
 
