@@ -22,7 +22,6 @@ STALE_DAYS=90
 # 1. Stale documentation files
 # -----------------------------------------------------------------------
 echo "Scanning for stale documentation..."
-# shellcheck disable=SC2016
 while IFS= read -r mdfile; do
     mod_time=$(stat -c %Y "$mdfile" 2>/dev/null || stat -f %m "$mdfile" 2>/dev/null || echo "$NOW")
     age_days=$(( (NOW - mod_time) / 86400 ))
