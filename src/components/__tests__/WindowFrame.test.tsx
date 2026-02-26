@@ -27,8 +27,12 @@ describe('WindowFrame', () => {
     onMaximize: vi.fn(),
     onRestore: vi.fn(),
     onShare: vi.fn(),
+    onPopout: vi.fn(),
+    onTogglePause: vi.fn(),
     isMaximized: false,
     isMinimized: false,
+    isPoppedOut: false,
+    isPaused: false,
   };
 
   it('renders title and controls', () => {
@@ -39,16 +43,49 @@ describe('WindowFrame', () => {
 
   it('calls minimize when button clicked', () => {
     render(<WindowFrame {...props}><div>Content</div></WindowFrame>);
-    const minBtn = screen.getByTitle('Minimize');
+    const minBtn = screen.getByRole('button', { name: /Minimize/i });
     fireEvent.click(minBtn);
     expect(props.onMinimize).toHaveBeenCalled();
   });
 
   it('calls maximize when button clicked', () => {
     render(<WindowFrame {...props}><div>Content</div></WindowFrame>);
-    const maxBtn = screen.getByTitle('Maximize');
+    const maxBtn = screen.getByRole('button', { name: /Maximize/i });
     fireEvent.click(maxBtn);
     expect(props.onMaximize).toHaveBeenCalled();
+  });
+
+  it('calls close when button clicked', () => {
+    render(<WindowFrame {...props}><div>Content</div></WindowFrame>);
+    const closeBtn = screen.getByRole('button', { name: /Close/i });
+    fireEvent.click(closeBtn);
+    expect(props.onClose).toHaveBeenCalled();
+  });
+
+  it('calls restore when button clicked', () => {
+    render(<WindowFrame {...props}><div>Content</div></WindowFrame>);
+    const restoreBtn = screen.getByRole('button', { name: /Restore Window/i });
+    fireEvent.click(restoreBtn);
+    expect(props.onRestore).toHaveBeenCalled();
+  });
+
+  it('calls popout when button clicked', () => {
+    render(<WindowFrame {...props}><div>Content</div></WindowFrame>);
+    const popoutBtn = screen.getByRole('button', { name: /Pop Out/i });
+    fireEvent.click(popoutBtn);
+    expect(props.onPopout).toHaveBeenCalled();
+  });
+
+  it('calls toggle pause when button clicked', () => {
+    render(<WindowFrame {...props}><div>Content</div></WindowFrame>);
+    const pauseBtn = screen.getByRole('button', { name: /Pause and Snapshot/i });
+    fireEvent.click(pauseBtn);
+    expect(props.onTogglePause).toHaveBeenCalled();
+  });
+
+  it('renders correct label for paused state', () => {
+    render(<WindowFrame {...props} isPaused={true}><div>Content</div></WindowFrame>);
+    expect(screen.getByRole('button', { name: /Resume Session/i })).toBeTruthy();
   });
 
   it('hides content when minimized', () => {
