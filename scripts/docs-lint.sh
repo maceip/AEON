@@ -156,13 +156,13 @@ done < <(find "$REPO_ROOT/docs" -name '*.md' -type f 2>/dev/null)
 # -----------------------------------------------------------------------
 echo "=== Checking README.md directory tree ==="
 # Only check top-level dirs (lines starting with ├── or └── at column 0-1 in the tree)
+# shellcheck disable=SC2016
 while IFS= read -r dir; do
     dir="${dir%/}"
     [[ -z "$dir" ]] && continue
     if [[ ! -d "$REPO_ROOT/$dir" ]]; then
         fail "README.md directory tree lists '$dir/' but it does not exist"
     fi
-# shellcheck disable=SC2016
 done < <(sed -n '/^```$/,/^```$/p' "$REPO_ROOT/README.md" | grep -P '^[├└]' | grep -oP '(?:├──|└──)\s+(\S+?)/' | sed 's/[├└── ]//g' | tr -d '/' | sort -u)
 
 # -----------------------------------------------------------------------
