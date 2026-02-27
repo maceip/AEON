@@ -4,6 +4,7 @@
 
 use crate::disasm::{Instruction, Opcode};
 use anyhow::Result;
+#[allow(unused_imports)]
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 /// A basic block of instructions

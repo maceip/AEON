@@ -26,7 +26,9 @@ error() { echo -e "${RED}[ERROR]${NC} $1"; exit 1; }
 
 cleanup() {
     log "Cleaning up..."
+    # shellcheck disable=SC2015,SC2086
     [ -n "$SERVER_PID" ] && kill $SERVER_PID 2>/dev/null || true
+    # shellcheck disable=SC2015,SC2086
     [ -n "$PROXY_PID" ] && kill $PROXY_PID 2>/dev/null || true
 }
 trap cleanup EXIT
@@ -47,6 +49,7 @@ if [ ! -f "$BUILD_DIR/friscy" ]; then
     mkdir -p "$BUILD_DIR"
     cd "$BUILD_DIR"
     cmake .. -DCMAKE_BUILD_TYPE=Release
+    # shellcheck disable=SC2046
     make -j$(nproc)
 fi
 

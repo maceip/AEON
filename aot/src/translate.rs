@@ -1328,7 +1328,7 @@ fn translate_instruction(inst: &Instruction, body: &mut Vec<WasmInst>) -> Result
             let frd_offset = 256 + rd * 4;
             let frs1_offset = 256 + rs1 * 4;
             let frs2_offset = 256 + rs2 * 4;
-            let rs3 = ((inst.bytes >> 27) & 0x1f) as u32;
+            let rs3 = (inst.bytes >> 27) & 0x1f;
             let frs3_offset = 256 + rs3 * 4;
             // rd = rs1 * rs2 + rs3
             body.push(WasmInst::LocalGet { idx: 0 });
@@ -1353,7 +1353,7 @@ fn translate_instruction(inst: &Instruction, body: &mut Vec<WasmInst>) -> Result
             let frd_offset = 256 + rd * 4;
             let frs1_offset = 256 + rs1 * 4;
             let frs2_offset = 256 + rs2 * 4;
-            let rs3 = ((inst.bytes >> 27) & 0x1f) as u32;
+            let rs3 = (inst.bytes >> 27) & 0x1f;
             let frs3_offset = 256 + rs3 * 4;
             // rd = rs1 * rs2 - rs3
             body.push(WasmInst::LocalGet { idx: 0 });
@@ -1378,7 +1378,7 @@ fn translate_instruction(inst: &Instruction, body: &mut Vec<WasmInst>) -> Result
             let frd_offset = 256 + rd * 4;
             let frs1_offset = 256 + rs1 * 4;
             let frs2_offset = 256 + rs2 * 4;
-            let rs3 = ((inst.bytes >> 27) & 0x1f) as u32;
+            let rs3 = (inst.bytes >> 27) & 0x1f;
             let frs3_offset = 256 + rs3 * 4;
             // rd = -(rs1 * rs2) + rs3 = rs3 - rs1*rs2
             body.push(WasmInst::LocalGet { idx: 0 });
@@ -1404,7 +1404,7 @@ fn translate_instruction(inst: &Instruction, body: &mut Vec<WasmInst>) -> Result
             let frd_offset = 256 + rd * 4;
             let frs1_offset = 256 + rs1 * 4;
             let frs2_offset = 256 + rs2 * 4;
-            let rs3 = ((inst.bytes >> 27) & 0x1f) as u32;
+            let rs3 = (inst.bytes >> 27) & 0x1f;
             let frs3_offset = 256 + rs3 * 4;
             // rd = -(rs1 * rs2) - rs3
             body.push(WasmInst::LocalGet { idx: 0 });
@@ -1431,7 +1431,7 @@ fn translate_instruction(inst: &Instruction, body: &mut Vec<WasmInst>) -> Result
             let frd_offset = 384 + rd * 8;
             let frs1_offset = 384 + rs1 * 8;
             let frs2_offset = 384 + rs2 * 8;
-            let rs3 = ((inst.bytes >> 27) & 0x1f) as u32;
+            let rs3 = (inst.bytes >> 27) & 0x1f;
             let frs3_offset = 384 + rs3 * 8;
             body.push(WasmInst::LocalGet { idx: 0 });
             body.push(WasmInst::LocalGet { idx: 0 });
@@ -1455,7 +1455,7 @@ fn translate_instruction(inst: &Instruction, body: &mut Vec<WasmInst>) -> Result
             let frd_offset = 384 + rd * 8;
             let frs1_offset = 384 + rs1 * 8;
             let frs2_offset = 384 + rs2 * 8;
-            let rs3 = ((inst.bytes >> 27) & 0x1f) as u32;
+            let rs3 = (inst.bytes >> 27) & 0x1f;
             let frs3_offset = 384 + rs3 * 8;
             body.push(WasmInst::LocalGet { idx: 0 });
             body.push(WasmInst::LocalGet { idx: 0 });
@@ -1479,7 +1479,7 @@ fn translate_instruction(inst: &Instruction, body: &mut Vec<WasmInst>) -> Result
             let frd_offset = 384 + rd * 8;
             let frs1_offset = 384 + rs1 * 8;
             let frs2_offset = 384 + rs2 * 8;
-            let rs3 = ((inst.bytes >> 27) & 0x1f) as u32;
+            let rs3 = (inst.bytes >> 27) & 0x1f;
             let frs3_offset = 384 + rs3 * 8;
             body.push(WasmInst::LocalGet { idx: 0 });
             body.push(WasmInst::LocalGet { idx: 0 });
@@ -1504,7 +1504,7 @@ fn translate_instruction(inst: &Instruction, body: &mut Vec<WasmInst>) -> Result
             let frd_offset = 384 + rd * 8;
             let frs1_offset = 384 + rs1 * 8;
             let frs2_offset = 384 + rs2 * 8;
-            let rs3 = ((inst.bytes >> 27) & 0x1f) as u32;
+            let rs3 = (inst.bytes >> 27) & 0x1f;
             let frs3_offset = 384 + rs3 * 8;
             body.push(WasmInst::LocalGet { idx: 0 });
             body.push(WasmInst::LocalGet { idx: 0 });
