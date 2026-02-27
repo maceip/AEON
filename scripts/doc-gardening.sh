@@ -67,7 +67,7 @@ for doc in "$REPO_ROOT/ARCHITECTURE.md" "$REPO_ROOT/AGENTS.md"; do
         if [[ ! -e "$REPO_ROOT/$trimmed" ]]; then
             add_problem "**Drift**: \`$doc_name\` references \`$path\` which no longer exists"
         fi
-    done < <(grep -oP '`[a-zA-Z][a-zA-Z0-9_/.\-]+\.(ts|tsx|js|hpp|cpp|rs|toml|json|html|sh)`' "$doc" 2>/dev/null | tr -d '`' | sort -u)
+    done < <(grep -oP "\`[a-zA-Z][a-zA-Z0-9_/.\-]+\.(ts|tsx|js|hpp|cpp|rs|toml|json|html|sh)\`" "$doc" 2>/dev/null | tr -d '`' | sort -u)
 done
 
 # -----------------------------------------------------------------------
@@ -154,6 +154,7 @@ fi
 
 if [[ -n "${GH_TOKEN:-}" ]] && command -v gh &>/dev/null; then
     DATE=$(date -u +%Y-%m-%d)
+    # shellcheck disable=SC2034
     BRANCH="doc-gardening/$DATE"
 
     BODY="## Doc Gardening Report ($DATE)
