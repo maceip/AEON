@@ -131,6 +131,7 @@ run_mode "edge_triplet" "${MODE_QUERY[edge_triplet]}"
 git_commit="$(cd "$PROJECT_DIR" && git rev-parse HEAD)"
 timestamp_utc="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
+# shellcheck disable=SC2016
 node -e '
 const fs = require("fs");
 

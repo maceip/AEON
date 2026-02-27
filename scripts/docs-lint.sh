@@ -46,7 +46,7 @@ while IFS= read -r path; do
     if [[ ! -e "$REPO_ROOT/$path" ]]; then
         fail "ARCHITECTURE.md references '$path' but it does not exist"
     fi
-done < <(grep -oP '`[a-zA-Z][a-zA-Z0-9_/.\-]+\.(ts|tsx|js|hpp|cpp|rs|toml|json|html|css|wasm|txt|md|yml|ckpt|sh)`' "$REPO_ROOT/ARCHITECTURE.md" 2>/dev/null | tr -d '`' | sort -u)
+done < <(grep -oP "\`[a-zA-Z][a-zA-Z0-9_/.\-]+\.(ts|tsx|js|hpp|cpp|rs|toml|json|html|css|wasm|txt|md|yml|ckpt|sh)\`" "$REPO_ROOT/ARCHITECTURE.md" 2>/dev/null | tr -d '`' | sort -u)
 
 # -----------------------------------------------------------------------
 # 4. ARCHITECTURE.md must mention key components
@@ -81,7 +81,7 @@ while IFS= read -r path; do
     if [[ ! -e "$REPO_ROOT/$trimmed" ]]; then
         fail "AGENTS.md references '$path' but it does not exist"
     fi
-done < <(sed -n '/## Code Layout/,/^## /p' "$REPO_ROOT/AGENTS.md" | grep -oP '`[a-zA-Z][a-zA-Z0-9_/.\-]+/?`' | tr -d '`' | sort -u)
+done < <(sed -n '/## Code Layout/,/^## /p' "$REPO_ROOT/AGENTS.md" | grep -oP "\`[a-zA-Z][a-zA-Z0-9_/.\-]+/?\`" | tr -d '`' | sort -u)
 
 # -----------------------------------------------------------------------
 # 6. Key source exports match documentation claims
@@ -156,6 +156,7 @@ done < <(find "$REPO_ROOT/docs" -name '*.md' -type f 2>/dev/null)
 # -----------------------------------------------------------------------
 echo "=== Checking README.md directory tree ==="
 # Only check top-level dirs (lines starting with ├── or └── at column 0-1 in the tree)
+# shellcheck disable=SC2016
 while IFS= read -r dir; do
     dir="${dir%/}"
     [[ -z "$dir" ]] && continue

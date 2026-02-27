@@ -369,12 +369,15 @@ export const TerminalView: React.FC<TerminalViewProps> = ({ machine, active, voi
       <button
         onClick={popOutTerminal}
         title="Pop out terminal"
+        aria-label="Pop out terminal"
         className="absolute bottom-4 right-14 p-1.5 rounded-full border shadow-lg z-30 bg-[var(--bg-frame)] border-[var(--border-subtle)] text-[#59c2ff] hover:brightness-110 transition-all"
       >
         <ExternalLink className="w-3.5 h-3.5" />
       </button>
       <button
         onClick={toggleMic}
+        title={isListening ? "Stop Voice Input" : "Start Voice Input"}
+        aria-label={isListening ? "Stop Voice Input" : "Start Voice Input"}
         className={`absolute bottom-4 right-4 p-1.5 rounded-full border shadow-lg z-30 transition-all ${
             isListening 
                 ? 'bg-red-600 border-red-400 text-white animate-mic-pulse' 

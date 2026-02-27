@@ -162,6 +162,7 @@ jit_loaded_csv="$(IFS=,; echo "${jit_loaded_values[*]}")"
 git_commit="$(cd "$PROJECT_DIR" && git rev-parse HEAD)"
 timestamp_utc="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
+# shellcheck disable=SC2016
 node -e '
 const fs = require("fs");
 
@@ -246,6 +247,7 @@ fs.writeFileSync(outFile, JSON.stringify(result, null, 2));
 
 echo
 echo "[bench] Summary:"
+# shellcheck disable=SC2016
 node -e '
 const fs = require("fs");
 const r = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
