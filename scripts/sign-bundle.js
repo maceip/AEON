@@ -13,7 +13,6 @@ async function sign() {
         console.error('Unsigned bundle not found at', wbnPath);
         process.exit(1);
     }
-    const bundle = fs.readFileSync(wbnPath);
 
     if (process.env.IWA_SIGNING_KEY) {
         console.log('Using signing key from environment variable...');
@@ -32,7 +31,6 @@ async function sign() {
     }
 
     console.log('Signing Web Bundle...');
-    try {
         const webBundleId = new wbnSign.WebBundleId(privateKey);
         
         // Use wbnSign to add integrity block

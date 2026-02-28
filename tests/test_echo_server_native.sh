@@ -20,7 +20,7 @@ if [[ ! -f "$BINARY" ]]; then
 fi
 
 cleanup() {
-    if [[ -n "${FRISCY_PID:-}" ]]; then kill "$FRISCY_PID" 2>/dev/null || true; fi
+    [[ -n "${FRISCY_PID:-}" ]] && kill "$FRISCY_PID" 2>/dev/null || true
     wait "$FRISCY_PID" 2>/dev/null || true
 }
 trap cleanup EXIT

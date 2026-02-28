@@ -26,8 +26,8 @@ error() { echo -e "${RED}[ERROR]${NC} $1"; exit 1; }
 
 cleanup() {
     log "Cleaning up..."
-    if [ -n "$SERVER_PID" ]; then kill "$SERVER_PID" 2>/dev/null || true; fi
-    if [ -n "$PROXY_PID" ]; then kill "$PROXY_PID" 2>/dev/null || true; fi
+    [ -n "$SERVER_PID" ] && kill $SERVER_PID 2>/dev/null || true
+    [ -n "$PROXY_PID" ] && kill $PROXY_PID 2>/dev/null || true
 }
 trap cleanup EXIT
 
@@ -47,7 +47,7 @@ if [ ! -f "$BUILD_DIR/friscy" ]; then
     mkdir -p "$BUILD_DIR"
     cd "$BUILD_DIR"
     cmake .. -DCMAKE_BUILD_TYPE=Release
-    make -j"$(nproc)"
+    make -j$(nproc)
 fi
 
 # Compile test program

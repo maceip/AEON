@@ -1,3 +1,0 @@
-## 2024-05-24 - Missing ARIA Labels on Icon-Only Buttons
-**Learning:** Icon-only buttons (like window controls and terminal options) in this app often lack `aria-label`s, making them inaccessible to screen readers. Relying solely on the `title` attribute is insufficient.
-**Action:** Always ensure that icon-only buttons include an `aria-label` attribute describing their function, particularly in shared UI components.

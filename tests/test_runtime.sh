@@ -13,7 +13,6 @@
 # ============================================================================
 set -euo pipefail
 
-# shellcheck disable=SC2034
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Colors
@@ -54,7 +53,7 @@ echo "Binary: $FRISCY"
 [[ -n "$ROOTFS" ]] && echo "Rootfs: $ROOTFS"
 
 TEST_TMP=$(mktemp -d)
-trap 'rm -rf "$TEST_TMP"' EXIT
+trap "rm -rf $TEST_TMP" EXIT
 
 # ---- Workstream A: Basic runtime ----
 section "Workstream A: Basic Runtime"
@@ -91,7 +90,7 @@ int main() {
     return 0;
 }
 CEOF
-    if riscv64-linux-gnu-gcc -static -O2 -o "$TEST_TMP/hello" "$TEST_TMP/hello.c" 2>/dev/null; then
+    riscv64-linux-gnu-gcc -static -O2 -o "$TEST_TMP/hello" "$TEST_TMP/hello.c" 2>/dev/null && {
         OUTPUT=$("$FRISCY" "$TEST_TMP/hello" 2>/dev/null || true)
         if echo "$OUTPUT" | grep -q 'Hello from friscy'; then
             pass "Static binary: hello output"
@@ -103,9 +102,7 @@ CEOF
         else
             fail "Static binary: file I/O failed"
         fi
-    else
-        skip "Failed to compile static test binary"
-    fi
+    } || skip "Failed to compile static test binary"
 else
     skip "No RISC-V cross-compiler (riscv64-linux-gnu-gcc)"
 fi
