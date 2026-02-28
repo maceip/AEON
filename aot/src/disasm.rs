@@ -1,3 +1,4 @@
+#![allow(non_camel_case_types)]
 // disasm.rs - RISC-V disassembler
 //
 // Decodes RISC-V RV64GC instructions into structured form for translation.
@@ -295,8 +296,7 @@ pub fn disassemble(section: &CodeSection) -> Result<Vec<Instruction>> {
             if offset + 2 > section.data.len() {
                 break;
             }
-            let bytes =
-                (section.data[offset] as u32) | ((section.data[offset + 1] as u32) << 8);
+            let bytes = (section.data[offset] as u32) | ((section.data[offset + 1] as u32) << 8);
 
             let inst = decode_compressed(addr, bytes);
             instructions.push(inst);

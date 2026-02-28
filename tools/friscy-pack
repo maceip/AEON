@@ -197,7 +197,7 @@ if [[ "$USE_AOT" == "true" ]]; then
             fi
 
             if [[ "$IS_RISCV" == "true" ]]; then
-                REL_PATH="${elf#$AOT_TMP}"
+                REL_PATH="${elf#"$AOT_TMP"}"
                 AOT_OUT="$OUTPUT_DIR/aot${REL_PATH}.wasm"
                 mkdir -p "$(dirname "$AOT_OUT")"
 
@@ -223,7 +223,7 @@ if [[ "$USE_AOT" == "true" && -d "$OUTPUT_DIR/aot" ]]; then
     # Build JSON array of AOT-compiled files (relative paths)
     AOT_FILES=""
     while read -r wasm_file; do
-        REL="${wasm_file#$OUTPUT_DIR/}"
+        REL="${wasm_file#"$OUTPUT_DIR"/}"
         if [[ -n "$AOT_FILES" ]]; then
             AOT_FILES="$AOT_FILES, \"$REL\""
         else
@@ -702,7 +702,8 @@ echo ""
 echo -e "  ${BLUE}Output directory:${NC} $OUTPUT_DIR"
 echo ""
 echo "  Files:"
-ls -lh "$OUTPUT_DIR" | tail -n +2 | while read line; do
+# shellcheck disable=SC2012
+ls -lh "$OUTPUT_DIR" | tail -n +2 | while read -r line; do
     echo "    $line"
 done
 echo ""

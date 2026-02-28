@@ -66,7 +66,7 @@ export const WindowFrame: React.FC<WindowFrameProps> = ({
       {/* Window Header */}
       <div 
         className={`h-9 bg-[#0d1117] flex items-center justify-between px-2 border-b border-[#1e293b] select-none shrink-0 z-20 ${(!isMaximized && !isPoppedOut) ? 'cursor-grab active:cursor-grabbing' : ''}`}
-        onDoubleClick={(e) => { e.stopPropagation(); isMaximized ? onRestore() : onMaximize(); }}
+        onDoubleClick={(e) => { e.stopPropagation(); if (isMaximized) { onRestore(); } else { onMaximize(); } }}
       >
         {/* Left Controls: Pause/Play, Restore, Popout */}
         <div className="flex items-center gap-1.5 relative z-30" key={isPaused ? 'paused' : 'running'}>
@@ -77,6 +77,7 @@ export const WindowFrame: React.FC<WindowFrameProps> = ({
               onClick={(e) => { e.stopPropagation(); onTogglePause?.(); }}
               className="p-1 rounded bg-friscy-blue/20 text-friscy-blue animate-pulse transition-colors"
               title="Resume Session"
+              aria-label="Resume Session"
             >
               <Play className="w-3.5 h-3.5" />
             </button>
@@ -87,6 +88,7 @@ export const WindowFrame: React.FC<WindowFrameProps> = ({
               onClick={(e) => { e.stopPropagation(); onTogglePause?.(); }}
               className="p-1 hover:bg-white/5 rounded text-gray-500 hover:text-friscy-blue transition-colors"
               title="Pause & Snapshot"
+              aria-label="Pause & Snapshot"
             >
               <Pause className="w-3.5 h-3.5" />
             </button>
@@ -96,6 +98,7 @@ export const WindowFrame: React.FC<WindowFrameProps> = ({
             onClick={(e) => { e.stopPropagation(); onRestore(); }}
             className="p-1 hover:bg-white/5 rounded text-gray-500 hover:text-friscy-blue transition-colors"
             title="Restore Window"
+            aria-label="Restore Window"
           >
             <RotateCcw className="w-3.5 h-3.5" />
           </button>
@@ -104,6 +107,7 @@ export const WindowFrame: React.FC<WindowFrameProps> = ({
             onClick={(e) => { e.stopPropagation(); onPopout(); }}
             className="p-1 hover:bg-white/5 rounded text-gray-500 hover:text-purple-400 transition-colors"
             title={isPoppedOut ? "Pop In" : "Pop Out"}
+            aria-label={isPoppedOut ? "Pop In" : "Pop Out"}
           >
             {isPoppedOut ? <ArrowDownLeft className="w-3.5 h-3.5" /> : <ExternalLink className="w-3.5 h-3.5" />}
           </button>
@@ -136,14 +140,16 @@ export const WindowFrame: React.FC<WindowFrameProps> = ({
             onClick={(e) => { e.stopPropagation(); onMinimize(); }}
             className="p-1 hover:bg-yellow-500/10 rounded text-gray-500 hover:text-yellow-500 transition-colors"
             title="Minimize"
+            aria-label="Minimize"
           >
             <Minus className="w-3.5 h-3.5" />
           </button>
           <button 
             onPointerDown={(e) => e.stopPropagation()}
-            onClick={(e) => { e.stopPropagation(); isMaximized ? onRestore() : onMaximize(); }}
+            onClick={(e) => { e.stopPropagation(); if (isMaximized) { onRestore(); } else { onMaximize(); } }}
             className="p-1 hover:bg-blue-500/10 rounded text-gray-500 hover:text-blue-400 transition-colors"
             title={isMaximized ? "Restore Down" : "Maximize"}
+            aria-label={isMaximized ? "Restore Down" : "Maximize"}
           >
             {isMaximized ? <Copy className="w-3.5 h-3.5" /> : <Square className="w-3.5 h-3.5" />}
           </button>
@@ -152,6 +158,7 @@ export const WindowFrame: React.FC<WindowFrameProps> = ({
             onClick={(e) => { e.stopPropagation(); onClose(); }}
             className="p-1 hover:bg-red-500/10 rounded text-gray-500 hover:text-red-500 transition-colors"
             title="Close"
+            aria-label="Close"
           >
             <X className="w-3.5 h-3.5" />
           </button>

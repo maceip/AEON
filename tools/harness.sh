@@ -133,6 +133,7 @@ if [ "$PRODUCTION" = "ON" ]; then
         echo ""
         echo "=== Production Build Successful ==="
         ls -lh "$OUTPUT_FILE"
+        # shellcheck disable=SC2034
         WASM_SIZE=$(grep -o 'new Uint8Array' "$OUTPUT_FILE" | wc -l || echo "embedded")
         echo "  Wasm: embedded in JS"
     else

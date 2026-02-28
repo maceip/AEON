@@ -10,6 +10,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC2034
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 RUNTIME_DIR="$(cd "$SCRIPT_DIR/../runtime" && pwd)"
 LOCK_FILE="$SCRIPT_DIR/build-lock.env"
@@ -82,6 +83,7 @@ cd emsdk
 echo "Installing Emscripten ${EMSDK_VERSION}..."
 ./emsdk install "${EMSDK_VERSION}"
 ./emsdk activate "${EMSDK_VERSION}"
+# shellcheck disable=SC1091
 source ./emsdk_env.sh
 cd "$RUNTIME_DIR"
 
@@ -113,7 +115,7 @@ emcmake cmake .. \
     -DCMAKE_CXX_FLAGS="-fwasm-exceptions" \
     -DCMAKE_C_FLAGS="-fwasm-exceptions"
 
-emmake make -j$(nproc) VERBOSE=1
+emmake make -j"$(nproc)" VERBOSE=1
 
 cd "$RUNTIME_DIR"
 
