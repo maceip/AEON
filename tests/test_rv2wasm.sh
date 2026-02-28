@@ -38,7 +38,7 @@ command -v cargo >/dev/null 2>&1 || { echo "Error: cargo (Rust) is required"; ex
 
 # Create test directory
 TEST_TMP=$(mktemp -d)
-trap "rm -rf $TEST_TMP" EXIT
+trap 'rm -rf "$TEST_TMP"' EXIT
 
 # ---- Build rv2wasm ----
 section "Build"
@@ -63,7 +63,7 @@ else
 fi
 
 # Help test
-"$RV2WASM" --help >/dev/null 2>&1 && pass "--help works" || fail "--help failed"
+if "$RV2WASM" --help >/dev/null 2>&1; then pass "--help works"; else fail "--help failed"; fi
 
 # ---- Skip binary tests if no cross-compiler ----
 if ! command -v riscv64-linux-gnu-gcc >/dev/null 2>&1; then
@@ -94,15 +94,18 @@ int main() {
 }
 CEOF
 
-riscv64-linux-gnu-gcc -static -O2 -o "$TEST_TMP/test_loop" "$TEST_TMP/test_loop.c" 2>/dev/null && {
+if riscv64-linux-gnu-gcc -static -O2 -o "$TEST_TMP/test_loop" "$TEST_TMP/test_loop.c" 2>/dev/null; then
     pass "Compiled test_loop binary"
 
-    "$RV2WASM" "$TEST_TMP/test_loop" -o "$TEST_TMP/test_loop.wasm" --verbose 2>/dev/null && {
+    if "$RV2WASM" "$TEST_TMP/test_loop" -o "$TEST_TMP/test_loop.wasm" --verbose 2>/dev/null; then
         pass "rv2wasm translated test_loop"
 
         if command -v wasm-validate >/dev/null 2>&1; then
-            wasm-validate "$TEST_TMP/test_loop.wasm" 2>/dev/null && \
-                pass "test_loop.wasm validates" || fail "test_loop.wasm validation failed"
+            if wasm-validate "$TEST_TMP/test_loop.wasm" 2>/dev/null; then
+                pass "test_loop.wasm validates"
+            else
+                fail "test_loop.wasm validation failed"
+            fi
         else
             skip "wasm-validate not installed"
         fi
@@ -117,8 +120,12 @@ riscv64-linux-gnu-gcc -static -O2 -o "$TEST_TMP/test_loop" "$TEST_TMP/test_loop.
         else
             skip "wasm-objdump not installed for br_table check"
         fi
-    } || fail "rv2wasm failed on test_loop"
-} || fail "Failed to compile test_loop"
+    else
+        fail "rv2wasm failed on test_loop"
+    fi
+else
+    skip "Failed to compile test_loop"
+fi
 
 # ---- Gap 2: Floating-Point Translation ----
 section "Gap 2: Floating-Point"
@@ -137,7 +144,7 @@ int main() {
 }
 CEOF
 
-riscv64-linux-gnu-gcc -static -O2 -o "$TEST_TMP/test_fp" "$TEST_TMP/test_fp.c" 2>/dev/null && {
+if riscv64-linux-gnu-gcc -static -O2 -o "$TEST_TMP/test_fp" "$TEST_TMP/test_fp.c" 2>/dev/null; then
     pass "Compiled test_fp binary"
 
     # Verify FP instructions in source binary
@@ -147,12 +154,15 @@ riscv64-linux-gnu-gcc -static -O2 -o "$TEST_TMP/test_fp" "$TEST_TMP/test_fp.c" 2
         skip "Could not verify FP instructions in source"
     fi
 
-    "$RV2WASM" "$TEST_TMP/test_fp" -o "$TEST_TMP/test_fp.wasm" --verbose 2>/dev/null && {
+    if "$RV2WASM" "$TEST_TMP/test_fp" -o "$TEST_TMP/test_fp.wasm" --verbose 2>/dev/null; then
         pass "rv2wasm translated test_fp (no FP panic)"
 
         if command -v wasm-validate >/dev/null 2>&1; then
-            wasm-validate "$TEST_TMP/test_fp.wasm" 2>/dev/null && \
-                pass "test_fp.wasm validates" || fail "test_fp.wasm validation failed"
+            if wasm-validate "$TEST_TMP/test_fp.wasm" 2>/dev/null; then
+                pass "test_fp.wasm validates"
+            else
+                fail "test_fp.wasm validation failed"
+            fi
         else
             skip "wasm-validate not installed"
         fi
@@ -168,8 +178,12 @@ riscv64-linux-gnu-gcc -static -O2 -o "$TEST_TMP/test_fp" "$TEST_TMP/test_fp.c" 2
                 fail "Many unreachable stubs ($UNREACHABLE_COUNT) - FP ops may be stubbed"
             fi
         fi
-    } || fail "rv2wasm failed on test_fp"
-} || fail "Failed to compile test_fp"
+    else
+        fail "rv2wasm failed on test_fp"
+    fi
+else
+    skip "Failed to compile test_fp"
+fi
 
 # ---- Gap 3: Atomic Instructions ----
 section "Gap 3: Atomics (AMOMIN/AMOMAX)"
@@ -186,20 +200,27 @@ int main() {
 }
 CEOF
 
-riscv64-linux-gnu-gcc -static -O2 -o "$TEST_TMP/test_atomic" "$TEST_TMP/test_atomic.c" 2>/dev/null && {
+if riscv64-linux-gnu-gcc -static -O2 -o "$TEST_TMP/test_atomic" "$TEST_TMP/test_atomic.c" 2>/dev/null; then
     pass "Compiled test_atomic binary"
 
-    "$RV2WASM" "$TEST_TMP/test_atomic" -o "$TEST_TMP/test_atomic.wasm" --verbose 2>/dev/null && {
+    if "$RV2WASM" "$TEST_TMP/test_atomic" -o "$TEST_TMP/test_atomic.wasm" --verbose 2>/dev/null; then
         pass "rv2wasm translated test_atomic (no atomic panic)"
 
         if command -v wasm-validate >/dev/null 2>&1; then
-            wasm-validate "$TEST_TMP/test_atomic.wasm" 2>/dev/null && \
-                pass "test_atomic.wasm validates" || fail "test_atomic.wasm validation failed"
+            if wasm-validate "$TEST_TMP/test_atomic.wasm" 2>/dev/null; then
+                pass "test_atomic.wasm validates"
+            else
+                fail "test_atomic.wasm validation failed"
+            fi
         else
             skip "wasm-validate not installed"
         fi
-    } || fail "rv2wasm failed on test_atomic"
-} || fail "Failed to compile test_atomic"
+    else
+        fail "rv2wasm failed on test_atomic"
+    fi
+else
+    skip "Failed to compile test_atomic"
+fi
 
 # ---- Gap 4: friscy-pack --aot integration ----
 section "Gap 4: friscy-pack Integration"
