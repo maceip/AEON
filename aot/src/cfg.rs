@@ -4,7 +4,7 @@
 
 use crate::disasm::{Instruction, Opcode};
 use anyhow::Result;
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet};
 
 /// A basic block of instructions
 #[derive(Debug, Clone)]
