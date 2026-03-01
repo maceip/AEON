@@ -72,6 +72,7 @@ export const WindowFrame: React.FC<WindowFrameProps> = ({
         <div className="flex items-center gap-1.5 relative z-30" key={isPaused ? 'paused' : 'running'}>
           {isPaused ? (
             <button 
+              aria-label="Resume Session"
               data-testid="pause-button"
               onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => { e.stopPropagation(); onTogglePause?.(); }}
@@ -82,6 +83,7 @@ export const WindowFrame: React.FC<WindowFrameProps> = ({
             </button>
           ) : (
             <button 
+              aria-label="Pause and Snapshot"
               data-testid="pause-button"
               onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => { e.stopPropagation(); onTogglePause?.(); }}
@@ -92,6 +94,7 @@ export const WindowFrame: React.FC<WindowFrameProps> = ({
             </button>
           )}
           <button 
+            aria-label="Restore Window"
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => { e.stopPropagation(); onRestore(); }}
             className="p-1 hover:bg-white/5 rounded text-gray-500 hover:text-friscy-blue transition-colors"
@@ -100,6 +103,7 @@ export const WindowFrame: React.FC<WindowFrameProps> = ({
             <RotateCcw className="w-3.5 h-3.5" />
           </button>
           <button 
+            aria-label={isPoppedOut ? "Pop In" : "Pop Out"}
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => { e.stopPropagation(); onPopout(); }}
             className="p-1 hover:bg-white/5 rounded text-gray-500 hover:text-purple-400 transition-colors"
@@ -132,6 +136,7 @@ export const WindowFrame: React.FC<WindowFrameProps> = ({
         {/* Right Controls: Min, Max, Close */}
         <div className="flex items-center gap-1.5 relative z-30">
           <button 
+            aria-label="Minimize"
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => { e.stopPropagation(); onMinimize(); }}
             className="p-1 hover:bg-yellow-500/10 rounded text-gray-500 hover:text-yellow-500 transition-colors"
@@ -140,6 +145,7 @@ export const WindowFrame: React.FC<WindowFrameProps> = ({
             <Minus className="w-3.5 h-3.5" />
           </button>
           <button 
+            aria-label={isMaximized ? "Restore Down" : "Maximize"}
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => { e.stopPropagation(); isMaximized ? onRestore() : onMaximize(); }}
             className="p-1 hover:bg-blue-500/10 rounded text-gray-500 hover:text-blue-400 transition-colors"
@@ -148,6 +154,7 @@ export const WindowFrame: React.FC<WindowFrameProps> = ({
             {isMaximized ? <Copy className="w-3.5 h-3.5" /> : <Square className="w-3.5 h-3.5" />}
           </button>
           <button 
+            aria-label="Close"
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => { e.stopPropagation(); onClose(); }}
             className="p-1 hover:bg-red-500/10 rounded text-gray-500 hover:text-red-500 transition-colors"

@@ -367,6 +367,7 @@ export const TerminalView: React.FC<TerminalViewProps> = ({ machine, active, voi
       className={`w-full h-full p-2 bg-[var(--bg-app)] border border-[var(--border-subtle)] rounded-lg shadow-inner overflow-hidden relative ${active ? 'block' : 'hidden'}`}>
       <div ref={terminalRef} className="w-full h-full" />
       <button
+        aria-label="Pop out terminal"
         onClick={popOutTerminal}
         title="Pop out terminal"
         className="absolute bottom-4 right-14 p-1.5 rounded-full border shadow-lg z-30 bg-[var(--bg-frame)] border-[var(--border-subtle)] text-[#59c2ff] hover:brightness-110 transition-all"
@@ -374,6 +375,7 @@ export const TerminalView: React.FC<TerminalViewProps> = ({ machine, active, voi
         <ExternalLink className="w-3.5 h-3.5" />
       </button>
       <button
+        aria-label="Toggle Microphone"
         onClick={toggleMic}
         className={`absolute bottom-4 right-4 p-1.5 rounded-full border shadow-lg z-30 transition-all ${
             isListening 
